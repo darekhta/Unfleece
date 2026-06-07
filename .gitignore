@@ -49,3 +49,6 @@ coverage/
 # Large vendored WASM artifacts (fetch/build via scripts; host oversized ones on R2)
 public/wasm/*.wasm
 !public/wasm/.gitkeep
+
+# Claude Code session artifacts (worktrees, local settings)
+.claude/
