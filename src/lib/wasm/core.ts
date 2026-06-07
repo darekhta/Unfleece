@@ -27,18 +27,24 @@ import wasmUrl from './pkg/unfleece_core_bg.wasm?url';
 import { PackBuilder } from './pack.js';
 
 let ready: Promise<unknown> | null = null;
+async function initCore(): Promise<unknown> {
+  // Node (vitest): fetch() can't load file paths — read the wasm bytes directly.
+  // This branch is dead code in the browser bundle.
+  if (typeof window === 'undefined' && typeof process !== 'undefined' && process.versions?.node) {
+    const fsModule = 'node:fs/promises';
+    const fs = await import(/* @vite-ignore */ fsModule);
+    const bytes = await fs.readFile(new URL('./pkg/unfleece_core_bg.wasm', import.meta.url));
+    return init({ module_or_path: bytes });
+  }
+  return init({ module_or_path: wasmUrl });
+}
+
 async function ensure(): Promise<void> {
   if (!ready) {
-    ready = (async () => {
-      // Node (vitest): fetch() can't load file paths — read the wasm bytes directly.
-      // This branch is dead code in the browser bundle.
-      if (typeof window === 'undefined' && typeof process !== 'undefined' && process.versions?.node) {
-        const fs = await import(/* @vite-ignore */ 'node' + ':fs/promises');
-        const bytes = await fs.readFile(new URL('./pkg/unfleece_core_bg.wasm', import.meta.url));
-        return init({ module_or_path: bytes });
-      }
-      return init({ module_or_path: wasmUrl });
-    })();
+    ready = initCore().catch((error) => {
+      ready = null;
+      throw error;
+    });
   }
   await ready;
 }

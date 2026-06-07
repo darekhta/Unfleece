@@ -32,7 +32,10 @@ pub fn inherited_page_value(
 
 /// Copy inheritable attributes (Resources/MediaBox/CropBox/Rotate) down onto the
 /// page dictionary so the page survives being re-parented or extracted.
-pub fn materialize_inherited_page_attrs(doc: &mut Document, page_id: ObjectId) -> Result<(), LopdfError> {
+pub fn materialize_inherited_page_attrs(
+    doc: &mut Document,
+    page_id: ObjectId,
+) -> Result<(), LopdfError> {
     for key in [
         b"Resources".as_slice(),
         b"MediaBox".as_slice(),
@@ -41,7 +44,9 @@ pub fn materialize_inherited_page_attrs(doc: &mut Document, page_id: ObjectId) -
     ] {
         if !doc.get_dictionary(page_id)?.has(key) {
             if let Some(value) = inherited_page_value(doc, page_id, key)? {
-                doc.get_object_mut(page_id)?.as_dict_mut()?.set(key.to_vec(), value);
+                doc.get_object_mut(page_id)?
+                    .as_dict_mut()?
+                    .set(key.to_vec(), value);
             }
         }
     }
@@ -56,13 +61,18 @@ pub fn effective_media_box(doc: &Document, page_id: ObjectId) -> Result<[f32; 4]
     }
     .ok_or_else(|| LopdfError::Syntax("Page has no MediaBox".to_string()))?;
 
-    let arr = raw.as_array().map_err(|_| LopdfError::Syntax("MediaBox is not an array".to_string()))?;
+    let arr = raw
+        .as_array()
+        .map_err(|_| LopdfError::Syntax("MediaBox is not an array".to_string()))?;
     if arr.len() != 4 {
-        return Err(LopdfError::Syntax("MediaBox must have 4 numbers".to_string()));
+        return Err(LopdfError::Syntax(
+            "MediaBox must have 4 numbers".to_string(),
+        ));
     }
     let mut out = [0f32; 4];
     for (i, obj) in arr.iter().enumerate() {
-        out[i] = number_as_f32(obj).ok_or_else(|| LopdfError::Syntax("MediaBox entry is not a number".to_string()))?;
+        out[i] = number_as_f32(obj)
+            .ok_or_else(|| LopdfError::Syntax("MediaBox entry is not a number".to_string()))?;
     }
     Ok(out)
 }
@@ -96,9 +106,9 @@ pub mod fixtures {
 
     /// A valid 1×1 PNG (RGBA).
     pub const PNG_1X1: &[u8] = &[
-        137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 1, 0, 0, 0, 1, 8,
-        4, 0, 0, 0, 181, 28, 12, 2, 0, 0, 0, 11, 73, 68, 65, 84, 120, 218, 99, 100, 96, 0, 0, 0,
-        6, 0, 2, 48, 129, 208, 47, 0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130,
+        137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 1, 0, 0, 0, 1, 8, 4,
+        0, 0, 0, 181, 28, 12, 2, 0, 0, 0, 11, 73, 68, 65, 84, 120, 218, 99, 100, 96, 0, 0, 0, 6, 0,
+        2, 48, 129, 208, 47, 0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130,
     ];
 
     /// Build a minimal valid n-page PDF. Page i has MediaBox width 300+i so
@@ -180,5 +190,28 @@ pub mod fixtures {
         let pages: Vec<_> = doc.page_iter().collect();
         let content = doc.get_page_content(pages[n]).unwrap();
         String::from_utf8_lossy(&content).to_string()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::util::fixtures::sample;
+
+    #[test]
+    fn effective_media_box_rejects_wrong_length_array() {
+        let mut doc = Document::load_mem(&sample(1)).unwrap();
+        let page_id = doc.page_iter().next().unwrap();
+        doc.get_object_mut(page_id)
+            .unwrap()
+            .as_dict_mut()
+            .unwrap()
+            .set("MediaBox", vec![0.into(), 0.into(), 300.into()]);
+
+        let err = effective_media_box(&doc, page_id).unwrap_err();
+        assert!(matches!(
+            err,
+            LopdfError::Syntax(message) if message == "MediaBox must have 4 numbers"
+        ));
     }
 }

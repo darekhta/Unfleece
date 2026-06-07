@@ -18,29 +18,31 @@
 pub mod pack;
 pub mod util;
 
-pub mod pages;
-pub mod pdfa;
-pub mod merge;
-pub mod organize_extra;
 pub mod boxes;
-pub mod meta;
-pub mod sanitize;
-pub mod stamp_text;
-pub mod stamp_image;
 pub mod images_to_pdf;
 pub mod impose;
+pub mod merge;
+pub mod meta;
+pub mod organize_extra;
+pub mod pages;
+pub mod pdfa;
+pub mod sanitize;
+pub mod stamp_image;
+pub mod stamp_text;
 
-pub use pages::{optimize_native, page_count_native, rotate_all_native, rotate_pages_native, select_pages_native};
-pub use pdfa::pdfa_from_png_pages_native;
 pub use merge::merge_pdfs_native;
+pub use pages::{
+    optimize_native, page_count_native, rotate_all_native, rotate_pages_native, select_pages_native,
+};
+pub use pdfa::pdfa_from_png_pages_native;
 // organize_extra: contract tests only — no public *_native functions to re-export (organize.ts reduces to pages.rs fns + TS index math)
 pub use boxes::crop_margins_native;
-pub use meta::{read_metadata_native, set_metadata_native, strip_metadata_native};
-pub use sanitize::{sanitize_native, sanitize_report_native};
-pub use stamp_text::{add_page_numbers_native, add_watermark_native};
-pub use stamp_image::stamp_images_native;
 pub use images_to_pdf::images_to_pdf_native;
 pub use impose::{booklet_native, n_up_native};
+pub use meta::{read_metadata_native, set_metadata_native, strip_metadata_native};
+pub use sanitize::{sanitize_native, sanitize_report_native};
+pub use stamp_image::stamp_images_native;
+pub use stamp_text::{add_page_numbers_native, add_watermark_native};
 
 // ---------------------------------------------------------------------------
 // wasm bindings (compiled only for wasm32)
@@ -99,14 +101,20 @@ mod wasm {
         map_str(super::merge_pdfs_native(pack))
     }
 
-// organize_extra: no new wasm bindings. organize.ts uses the existing bindings
-// select_pages / rotate_all / rotate_pages / page_count (all already exposed in
-// the wasm module); the remaining organize logic (complement, permutation
-// validation, split loops, angle % 90 validation, progress) stays TS-side.
+    // organize_extra: no new wasm bindings. organize.ts uses the existing bindings
+    // select_pages / rotate_all / rotate_pages / page_count (all already exposed in
+    // the wasm module); the remaining organize logic (complement, permutation
+    // validation, split loops, angle % 90 validation, progress) stays TS-side.
 
     /// Trim margins (in points) from every page by setting the page CropBox.
     #[wasm_bindgen]
-    pub fn crop_margins(data: &[u8], top: f32, right: f32, bottom: f32, left: f32) -> Result<Vec<u8>, JsError> {
+    pub fn crop_margins(
+        data: &[u8],
+        top: f32,
+        right: f32,
+        bottom: f32,
+        left: f32,
+    ) -> Result<Vec<u8>, JsError> {
         map_str(super::crop_margins_native(data, top, right, bottom, left))
     }
 

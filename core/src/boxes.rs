@@ -19,7 +19,13 @@ use crate::util::{effective_media_box, save_compact};
 /// - the new CropBox is `[x0 + left, y0 + bottom, x1 - right, y1 - top]`
 ///   (PDF y-axis points up, so the *bottom* margin moves the y-origin);
 /// - the MediaBox is left untouched.
-pub fn crop_margins_native(data: &[u8], top: f32, right: f32, bottom: f32, left: f32) -> Result<Vec<u8>, String> {
+pub fn crop_margins_native(
+    data: &[u8],
+    top: f32,
+    right: f32,
+    bottom: f32,
+    left: f32,
+) -> Result<Vec<u8>, String> {
     if top < 0.0 || right < 0.0 || bottom < 0.0 || left < 0.0 {
         return Err("Crop margins cannot be negative".to_string());
     }
@@ -88,7 +94,10 @@ mod tests {
 
     fn assert_box_eq(actual: [f32; 4], expected: [f32; 4]) {
         for (a, e) in actual.iter().zip(expected.iter()) {
-            assert!((a - e).abs() < 1e-3, "box {actual:?} != expected {expected:?}");
+            assert!(
+                (a - e).abs() < 1e-3,
+                "box {actual:?} != expected {expected:?}"
+            );
         }
     }
 
@@ -107,7 +116,10 @@ mod tests {
             "MediaBox" => media.iter().map(|&v| Object::Real(v)).collect::<Vec<_>>(),
         };
         if let Some(c) = crop {
-            page.set("CropBox", c.iter().map(|&v| Object::Real(v)).collect::<Vec<_>>());
+            page.set(
+                "CropBox",
+                c.iter().map(|&v| Object::Real(v)).collect::<Vec<_>>(),
+            );
         }
         let page_id = doc.add_object(page);
         let pages_dict = dictionary! {
@@ -197,7 +209,8 @@ mod tests {
 
     #[test]
     fn preserves_page_content() {
-        let out = crop_margins_native(&sample_with_text(2, Some("Hello")), 10.0, 10.0, 10.0, 10.0).unwrap();
+        let out = crop_margins_native(&sample_with_text(2, Some("Hello")), 10.0, 10.0, 10.0, 10.0)
+            .unwrap();
         assert!(page_content_text(&out, 0).contains("Hello 0"));
         assert!(page_content_text(&out, 1).contains("Hello 1"));
     }

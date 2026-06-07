@@ -15,20 +15,14 @@ export interface ProtectOptions {
   allowModifying?: boolean;
 }
 
-// "/Encrypt" as raw bytes. The trailer (or xref-stream dictionary) that
-// references the encryption dictionary can never live inside a compressed
-// stream, so a raw byte scan reliably detects encrypted documents.
-const ENCRYPT_MARKER = [0x2f, 0x45, 0x6e, 0x63, 0x72, 0x79, 0x70, 0x74];
-
-function hasEncryptDictionary(bytes: Uint8Array): boolean {
-  // Scan backward: trailers live at the end of the file.
-  outer: for (let i = bytes.length - ENCRYPT_MARKER.length; i >= 0; i--) {
-    for (let j = 0; j < ENCRYPT_MARKER.length; j++) {
-      if (bytes[i + j] !== ENCRYPT_MARKER[j]) continue outer;
-    }
-    return true;
+async function hasEncryptDictionary(bytes: Uint8Array): Promise<boolean> {
+  try {
+    const doc = await PDFDocument.load(bytes, { ignoreEncryption: true, updateMetadata: false });
+    return doc.context.trailerInfo.Encrypt !== undefined;
+  } catch {
+    // Let the Rust core surface its normal parser error for malformed PDFs.
+    return false;
   }
-  return false;
 }
 
 /**
@@ -40,7 +34,7 @@ function hasEncryptDictionary(bytes: Uint8Array): boolean {
  * sanitizing without decrypting would silently corrupt the page content.
  */
 export async function sanitizePdf(bytes: Uint8Array, options: SanitizeOptions = {}, onProgress?: ProgressCallback): Promise<Uint8Array> {
-  if (hasEncryptDictionary(bytes)) {
+  if (await hasEncryptDictionary(bytes)) {
     throw new Error('This PDF is password-protected. Unlock it first, then sanitize the unlocked copy.');
   }
   notifyProgress(onProgress, { phase: 'working', label: 'Sanitizing PDF in Rust core…', current: 0, total: 1 });

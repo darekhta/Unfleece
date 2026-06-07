@@ -155,7 +155,11 @@ struct ColorOpt {
 
 impl Default for ColorOpt {
     fn default() -> Self {
-        Self { r: 0.6, g: 0.6, b: 0.6 }
+        Self {
+            r: 0.6,
+            g: 0.6,
+            b: 0.6,
+        }
     }
 }
 
@@ -215,9 +219,14 @@ pub fn add_page_numbers_native(data: &[u8], opts_json: &str) -> Result<Vec<u8>, 
         } else {
             margin
         };
-        let y = if position.starts_with("top") { height - margin - font_size } else { margin };
+        let y = if position.starts_with("top") {
+            height - margin - font_size
+        } else {
+            margin
+        };
 
-        let font_key = add_resource_entry(&mut doc, page_id, "Font", "UFt", Object::Reference(font_id))?;
+        let font_key =
+            add_resource_entry(&mut doc, page_id, "Font", "UFt", Object::Reference(font_id))?;
         let ops = text_stamp_ops(
             &font_key,
             None,
@@ -250,7 +259,11 @@ pub fn add_watermark_native(data: &[u8], opts_json: &str) -> Result<Vec<u8>, Str
     let opacity = opts.opacity.unwrap_or(0.25).clamp(0.0, 1.0);
     let angle = opts.angle.unwrap_or(45.0);
     let color = opts.color.unwrap_or_default();
-    let rgb = [color.r.clamp(0.0, 1.0), color.g.clamp(0.0, 1.0), color.b.clamp(0.0, 1.0)];
+    let rgb = [
+        color.r.clamp(0.0, 1.0),
+        color.g.clamp(0.0, 1.0),
+        color.b.clamp(0.0, 1.0),
+    ];
 
     let mut doc = Document::load_mem(data).map_err(|e| e.to_string())?;
     let pages: Vec<ObjectId> = doc.page_iter().collect();
@@ -282,8 +295,15 @@ pub fn add_watermark_native(data: &[u8], opts_json: &str) -> Result<Vec<u8>, Str
         let x = width / 2.0 - (text_width / 2.0) * cos;
         let y = height / 2.0 - (text_width / 2.0) * sin;
 
-        let font_key = add_resource_entry(&mut doc, page_id, "Font", "UFt", Object::Reference(font_id))?;
-        let gs_key = add_resource_entry(&mut doc, page_id, "ExtGState", "UFgs", Object::Reference(gs_id))?;
+        let font_key =
+            add_resource_entry(&mut doc, page_id, "Font", "UFt", Object::Reference(font_id))?;
+        let gs_key = add_resource_entry(
+            &mut doc,
+            page_id,
+            "ExtGState",
+            "UFgs",
+            Object::Reference(gs_id),
+        )?;
         let ops = text_stamp_ops(
             &font_key,
             Some(&gs_key),
@@ -352,7 +372,10 @@ fn encode_winansi(text: &str) -> Vec<u8> {
 
 /// Advance width in pt of WinAnsi-encoded text in the given AFM table.
 fn text_width_pt(encoded: &[u8], widths: &[u16; 224], font_size: f32) -> f32 {
-    let units: u32 = encoded.iter().map(|&b| u32::from(widths[(b - 0x20) as usize])).sum();
+    let units: u32 = encoded
+        .iter()
+        .map(|&b| u32::from(widths[(b - 0x20) as usize]))
+        .sum();
     units as f32 / 1000.0 * font_size
 }
 
@@ -414,17 +437,27 @@ fn text_stamp_ops(
 ) -> Vec<Operation> {
     let mut ops = vec![Operation::new("q", vec![])];
     if let Some(gs) = gs_key {
-        ops.push(Operation::new("gs", vec![Object::Name(gs.as_bytes().to_vec())]));
+        ops.push(Operation::new(
+            "gs",
+            vec![Object::Name(gs.as_bytes().to_vec())],
+        ));
     }
     ops.extend([
         Operation::new("BT", vec![]),
         Operation::new(
             "rg",
-            vec![Object::Real(color[0]), Object::Real(color[1]), Object::Real(color[2])],
+            vec![
+                Object::Real(color[0]),
+                Object::Real(color[1]),
+                Object::Real(color[2]),
+            ],
         ),
         Operation::new(
             "Tf",
-            vec![Object::Name(font_key.as_bytes().to_vec()), Object::Real(font_size)],
+            vec![
+                Object::Name(font_key.as_bytes().to_vec()),
+                Object::Real(font_size),
+            ],
         ),
         Operation::new("Tm", tm.iter().map(|&v| Object::Real(v)).collect()),
         Operation::new("Tj", vec![Object::string_literal(encoded_text)]),
@@ -530,13 +563,18 @@ fn add_resource_entry(
         let found = match resources_dict(doc, page_id, &res_loc)?.get(category.as_bytes()) {
             Ok(Object::Reference(id)) => Some(CatLoc::Indirect(*id)),
             Ok(Object::Dictionary(_)) => Some(CatLoc::Inline),
-            Ok(_) => return Err(format!("Page /{category} resource entry is not a dictionary")),
+            Ok(_) => {
+                return Err(format!(
+                    "Page /{category} resource entry is not a dictionary"
+                ))
+            }
             Err(_) => None,
         };
         match found {
             Some(CatLoc::Indirect(id)) => {
-                doc.get_dictionary(id)
-                    .map_err(|_| format!("Page /{category} resource reference is not a dictionary"))?;
+                doc.get_dictionary(id).map_err(|_| {
+                    format!("Page /{category} resource reference is not a dictionary")
+                })?;
                 CatLoc::Indirect(id)
             }
             Some(CatLoc::Inline) => CatLoc::Inline,
@@ -651,7 +689,10 @@ mod tests {
     }
 
     fn last_op<'a>(ops: &'a [Operation], name: &str) -> &'a Operation {
-        ops.iter().rev().find(|o| o.operator == name).unwrap_or_else(|| panic!("no {name} op"))
+        ops.iter()
+            .rev()
+            .find(|o| o.operator == name)
+            .unwrap_or_else(|| panic!("no {name} op"))
     }
 
     fn count_op(ops: &[Operation], name: &str) -> usize {
@@ -664,7 +705,10 @@ mod tests {
 
     #[track_caller]
     fn assert_near(actual: f32, expected: f32) {
-        assert!((actual - expected).abs() < 0.05, "expected {expected}, got {actual}");
+        assert!(
+            (actual - expected).abs() < 0.05,
+            "expected {expected}, got {actual}"
+        );
     }
 
     /// `(ca, CA)` of the first ExtGState reachable from page `page`'s Resources.
@@ -728,6 +772,96 @@ mod tests {
         buf
     }
 
+    fn one_page_pdf(mut page: Dictionary) -> Vec<u8> {
+        let mut doc = Document::with_version("1.5");
+        let pages_id = doc.new_object_id();
+        page.set("Type", "Page");
+        page.set("Parent", pages_id);
+        if page.get(b"MediaBox").is_err() {
+            page.set("MediaBox", vec![0.into(), 0.into(), 300.into(), 400.into()]);
+        }
+        let page_id = doc.add_object(page);
+        let pages = dictionary! { "Type" => "Pages", "Kids" => vec![page_id.into()], "Count" => 1 };
+        doc.objects.insert(pages_id, Object::Dictionary(pages));
+        let catalog_id = doc.add_object(dictionary! { "Type" => "Catalog", "Pages" => pages_id });
+        doc.trailer.set("Root", catalog_id);
+        let mut buf = Vec::new();
+        doc.save_to(&mut buf).unwrap();
+        buf
+    }
+
+    fn pdf_with_resource_reference_to_non_dict() -> Vec<u8> {
+        let mut doc = Document::with_version("1.5");
+        let pages_id = doc.new_object_id();
+        let bad_resources_id = doc.add_object(Object::Integer(42));
+        let page_id = doc.add_object(dictionary! {
+            "Type" => "Page",
+            "Parent" => pages_id,
+            "Resources" => bad_resources_id,
+            "MediaBox" => vec![0.into(), 0.into(), 300.into(), 400.into()],
+        });
+        let pages = dictionary! { "Type" => "Pages", "Kids" => vec![page_id.into()], "Count" => 1 };
+        doc.objects.insert(pages_id, Object::Dictionary(pages));
+        let catalog_id = doc.add_object(dictionary! { "Type" => "Catalog", "Pages" => pages_id });
+        doc.trailer.set("Root", catalog_id);
+        let mut buf = Vec::new();
+        doc.save_to(&mut buf).unwrap();
+        buf
+    }
+
+    fn pdf_with_font_category_reference_to_non_dict() -> Vec<u8> {
+        let mut doc = Document::with_version("1.5");
+        let pages_id = doc.new_object_id();
+        let bad_font_id = doc.add_object(Object::Integer(42));
+        let page_id = doc.add_object(dictionary! {
+            "Type" => "Page",
+            "Parent" => pages_id,
+            "Resources" => dictionary! { "Font" => bad_font_id },
+            "MediaBox" => vec![0.into(), 0.into(), 300.into(), 400.into()],
+        });
+        let pages = dictionary! { "Type" => "Pages", "Kids" => vec![page_id.into()], "Count" => 1 };
+        doc.objects.insert(pages_id, Object::Dictionary(pages));
+        let catalog_id = doc.add_object(dictionary! { "Type" => "Catalog", "Pages" => pages_id });
+        doc.trailer.set("Root", catalog_id);
+        let mut buf = Vec::new();
+        doc.save_to(&mut buf).unwrap();
+        buf
+    }
+
+    fn pdf_with_indirect_font_category_collision() -> Vec<u8> {
+        let mut doc = Document::with_version("1.5");
+        let pages_id = doc.new_object_id();
+        let font_category_id = doc.add_object(dictionary! {
+            "UFt" => dictionary! {
+                "Type" => "Font",
+                "Subtype" => "Type1",
+                "BaseFont" => "Courier",
+            },
+        });
+        let resources_id = doc.add_object(dictionary! { "Font" => font_category_id });
+        let page_id = doc.add_object(dictionary! {
+            "Type" => "Page",
+            "Parent" => pages_id,
+            "Resources" => resources_id,
+            "MediaBox" => vec![0.into(), 0.into(), 300.into(), 400.into()],
+        });
+        let pages = dictionary! { "Type" => "Pages", "Kids" => vec![page_id.into()], "Count" => 1 };
+        doc.objects.insert(pages_id, Object::Dictionary(pages));
+        let catalog_id = doc.add_object(dictionary! { "Type" => "Catalog", "Pages" => pages_id });
+        doc.trailer.set("Root", catalog_id);
+        let mut buf = Vec::new();
+        doc.save_to(&mut buf).unwrap();
+        buf
+    }
+
+    fn tf_font_name(data: &[u8]) -> Vec<u8> {
+        let ops = ops_of(data, 0);
+        match &last_op(&ops, "Tf").operands[0] {
+            Object::Name(name) => name.clone(),
+            other => panic!("unexpected Tf font operand: {other:?}"),
+        }
+    }
+
     // -- page numbers ---------------------------------------------------------
 
     #[test]
@@ -737,7 +871,10 @@ mod tests {
         assert_eq!(n_pages(&out), 3);
         for (i, expected) in ["(1)", "(2)", "(3)"].iter().enumerate() {
             let text = page_content_text(&out, i);
-            assert!(text.contains(expected), "page {i} missing {expected}: {text}");
+            assert!(
+                text.contains(expected),
+                "page {i} missing {expected}: {text}"
+            );
         }
         // Defaults: 10 pt Helvetica in rgb(0.1, 0.1, 0.1).
         let ops = ops_of(&out, 0);
@@ -751,7 +888,8 @@ mod tests {
 
     #[test]
     fn page_numbers_format_supports_total_and_literals() {
-        let out = add_page_numbers_native(&sample(3), r#"{"format":"Page {n} of {total}"}"#).unwrap();
+        let out =
+            add_page_numbers_native(&sample(3), r#"{"format":"Page {n} of {total}"}"#).unwrap();
         assert!(page_content_text(&out, 1).contains("(Page 2 of 3)"));
         // Unknown placeholders are left verbatim (JS only replaces {n}/{total}).
         let out = add_page_numbers_native(&sample(1), r#"{"format":"{n}{x}"}"#).unwrap();
@@ -812,7 +950,11 @@ mod tests {
 
     #[test]
     fn page_numbers_camel_case_font_size_and_margin_options() {
-        let out = add_page_numbers_native(&sample(1), r#"{"fontSize":8,"margin":10,"position":"top-left"}"#).unwrap();
+        let out = add_page_numbers_native(
+            &sample(1),
+            r#"{"fontSize":8,"margin":10,"position":"top-left"}"#,
+        )
+        .unwrap();
         let ops = ops_of(&out, 0);
         assert_near(fnum(&last_op(&ops, "Tf").operands[1]), 8.0);
         let tm = last_op(&ops, "Tm");
@@ -828,7 +970,7 @@ mod tests {
         let ops = ops_of(&out, 0);
         assert_eq!(ops[0].operator, "q", "existing content not bracketed");
         assert_eq!(count_op(&ops, "Tj"), 2); // original text + stamp
-        // The stamp is the LAST Tj and shows "1".
+                                             // The stamp is the LAST Tj and shows "1".
         match &last_op(&ops, "Tj").operands[0] {
             Object::String(bytes, _) => assert_eq!(bytes, b"1"),
             other => panic!("unexpected Tj operand: {other:?}"),
@@ -848,13 +990,19 @@ mod tests {
 
     #[test]
     fn page_numbers_handle_missing_contents_and_indirect_resources() {
-        let out = add_page_numbers_native(&pdf_without_contents_indirect_resources(), "{}").unwrap();
+        let out =
+            add_page_numbers_native(&pdf_without_contents_indirect_resources(), "{}").unwrap();
         assert_eq!(n_pages(&out), 1);
         assert!(page_content_text(&out, 0).contains("(1)"));
         // The font landed in the (indirect) Resources dict and is reachable.
         let doc = Document::load_mem(&out).unwrap();
         let pages: Vec<_> = doc.page_iter().collect();
-        let res = match doc.get_dictionary(pages[0]).unwrap().get(b"Resources").unwrap() {
+        let res = match doc
+            .get_dictionary(pages[0])
+            .unwrap()
+            .get(b"Resources")
+            .unwrap()
+        {
             Object::Reference(id) => doc.get_dictionary(*id).unwrap(),
             Object::Dictionary(d) => d,
             other => panic!("unexpected Resources: {other:?}"),
@@ -895,11 +1043,178 @@ mod tests {
     }
 
     #[test]
+    fn winansi_encoding_maps_cp1252_specials_and_filters_controls() {
+        let special = concat!(
+            "\u{20AC}", "\u{201A}", "\u{0192}", "\u{201E}", "\u{2026}", "\u{2020}", "\u{2021}",
+            "\u{02C6}", "\u{2030}", "\u{0160}", "\u{2039}", "\u{0152}", "\u{017D}", "\u{2018}",
+            "\u{2019}", "\u{201C}", "\u{201D}", "\u{2022}", "\u{2013}", "\u{2014}", "\u{02DC}",
+            "\u{2122}", "\u{0161}", "\u{203A}", "\u{0153}", "\u{017E}", "\u{0178}"
+        );
+        assert_eq!(
+            encode_winansi(special),
+            vec![
+                0x80, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87, 0x88, 0x89, 0x8A, 0x8B, 0x8C, 0x8E, 0x91,
+                0x92, 0x93, 0x94, 0x95, 0x96, 0x97, 0x98, 0x99, 0x9A, 0x9B, 0x9C, 0x9E, 0x9F,
+            ]
+        );
+        assert_eq!(encode_winansi("A\n№B"), b"A?B");
+    }
+
+    #[test]
+    fn page_numbers_reject_malformed_resource_shapes() {
+        let err = add_page_numbers_native(&one_page_pdf(dictionary! { "Resources" => 42 }), "{}")
+            .unwrap_err();
+        assert_eq!(err, "Page /Resources is not a dictionary");
+
+        let err =
+            add_page_numbers_native(&pdf_with_resource_reference_to_non_dict(), "{}").unwrap_err();
+        assert_eq!(err, "Page /Resources reference is not a dictionary");
+
+        let err = add_page_numbers_native(
+            &one_page_pdf(dictionary! { "Resources" => dictionary! { "Font" => 42 } }),
+            "{}",
+        )
+        .unwrap_err();
+        assert_eq!(err, "Page /Font resource entry is not a dictionary");
+
+        let err = add_page_numbers_native(&pdf_with_font_category_reference_to_non_dict(), "{}")
+            .unwrap_err();
+        assert_eq!(err, "Page /Font resource reference is not a dictionary");
+    }
+
+    #[test]
+    fn page_numbers_avoid_font_key_collisions_in_inline_resources() {
+        let pdf = one_page_pdf(dictionary! {
+            "Resources" => dictionary! {
+                "Font" => dictionary! {
+                    "UFt" => dictionary! {
+                        "Type" => "Font",
+                        "Subtype" => "Type1",
+                        "BaseFont" => "Courier",
+                    },
+                },
+            },
+        });
+        let out = add_page_numbers_native(&pdf, "{}").unwrap();
+        assert_eq!(tf_font_name(&out), b"UFt1");
+    }
+
+    #[test]
+    fn page_numbers_avoid_font_key_collisions_in_indirect_resources() {
+        let out =
+            add_page_numbers_native(&pdf_with_indirect_font_category_collision(), "{}").unwrap();
+        assert_eq!(tf_font_name(&out), b"UFt1");
+
+        let doc = Document::load_mem(&out).unwrap();
+        let pages: Vec<_> = doc.page_iter().collect();
+        let resources_id = doc
+            .get_dictionary(pages[0])
+            .unwrap()
+            .get(b"Resources")
+            .unwrap()
+            .as_reference()
+            .unwrap();
+        let font_id = doc
+            .get_dictionary(resources_id)
+            .unwrap()
+            .get(b"Font")
+            .unwrap()
+            .as_reference()
+            .unwrap();
+        let fonts = doc.get_dictionary(font_id).unwrap();
+        assert!(fonts.get(b"UFt").is_ok());
+        assert!(fonts.get(b"UFt1").is_ok());
+    }
+
+    #[test]
+    fn page_numbers_reject_invalid_contents_object() {
+        let err = add_page_numbers_native(&one_page_pdf(dictionary! { "Contents" => 42 }), "{}")
+            .unwrap_err();
+        assert_eq!(err, "Page /Contents is not a stream or array");
+    }
+
+    #[test]
+    fn watermark_rejects_malformed_extgstate_resources() {
+        let err = add_watermark_native(
+            &one_page_pdf(dictionary! {
+                "Resources" => dictionary! { "ExtGState" => 42 },
+            }),
+            r#"{"text":"X"}"#,
+        )
+        .unwrap_err();
+        assert_eq!(err, "Page /ExtGState resource entry is not a dictionary");
+    }
+
+    #[test]
+    fn watermark_avoids_extgstate_key_collisions() {
+        let out = add_watermark_native(
+            &one_page_pdf(dictionary! {
+                "Resources" => dictionary! {
+                    "ExtGState" => dictionary! {
+                        "UFgs" => dictionary! { "ca" => 0.5, "CA" => 0.5 },
+                    },
+                },
+            }),
+            r#"{"text":"X"}"#,
+        )
+        .unwrap();
+        let ops = ops_of(&out, 0);
+        match &last_op(&ops, "gs").operands[0] {
+            Object::Name(name) => assert_eq!(name, b"UFgs1"),
+            other => panic!("unexpected gs operand: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn append_contents_materializes_inline_streams() {
+        let mut doc = Document::with_version("1.5");
+        let pages_id = doc.new_object_id();
+        let page_id = doc.add_object(dictionary! {
+            "Type" => "Page",
+            "Parent" => pages_id,
+            "Contents" => Object::Stream(Stream::new(dictionary! {}, b"q\n".to_vec())),
+            "MediaBox" => vec![0.into(), 0.into(), 300.into(), 400.into()],
+        });
+        let stamp_id = doc.add_object(Stream::new(dictionary! {}, b"BT (1) Tj ET\n".to_vec()));
+        let (push_id, pop_id) = wrap_stream_ids(&mut doc).unwrap();
+
+        append_to_page_contents(&mut doc, page_id, stamp_id, push_id, pop_id).unwrap();
+
+        let contents = doc
+            .get_dictionary(page_id)
+            .unwrap()
+            .get(b"Contents")
+            .unwrap()
+            .as_array()
+            .unwrap();
+        assert_eq!(contents.len(), 4);
+        assert_eq!(contents[0].as_reference().unwrap(), push_id);
+        assert_eq!(contents[2].as_reference().unwrap(), pop_id);
+        assert_eq!(contents[3].as_reference().unwrap(), stamp_id);
+
+        let inline_id = contents[1].as_reference().unwrap();
+        assert_eq!(
+            doc.get_object(inline_id)
+                .unwrap()
+                .as_stream()
+                .unwrap()
+                .content,
+            b"q\n"
+        );
+    }
+
+    #[test]
     fn width_metrics_match_adobe_afm() {
         // Helvetica "Hello World" @ 12 pt = 5167/1000 * 12 = 62.004 pt.
-        assert_near(text_width_pt(&encode_winansi("Hello World"), &HELVETICA_WIDTHS, 12.0), 62.004);
+        assert_near(
+            text_width_pt(&encode_winansi("Hello World"), &HELVETICA_WIDTHS, 12.0),
+            62.004,
+        );
         // Helvetica-Bold "WM" @ 50 pt = (944 + 833)/1000 * 50 = 88.85 pt.
-        assert_near(text_width_pt(&encode_winansi("WM"), &HELVETICA_BOLD_WIDTHS, 50.0), 88.85);
+        assert_near(
+            text_width_pt(&encode_winansi("WM"), &HELVETICA_BOLD_WIDTHS, 50.0),
+            88.85,
+        );
     }
 
     // -- watermark ------------------------------------------------------------
@@ -920,12 +1235,17 @@ mod tests {
                 assert_near(fnum(&rg.operands[ch]), 0.6);
             }
         }
-        assert!(out.windows(b"Helvetica-Bold".len()).any(|w| w == b"Helvetica-Bold"));
+        assert!(out
+            .windows(b"Helvetica-Bold".len())
+            .any(|w| w == b"Helvetica-Bold"));
     }
 
     #[test]
     fn watermark_missing_or_empty_text_rejected_with_exact_message() {
-        assert_eq!(add_watermark_native(&sample(1), "{}").unwrap_err(), "Watermark text is required");
+        assert_eq!(
+            add_watermark_native(&sample(1), "{}").unwrap_err(),
+            "Watermark text is required"
+        );
         assert_eq!(
             add_watermark_native(&sample(1), r#"{"text":""}"#).unwrap_err(),
             "Watermark text is required"
@@ -972,14 +1292,20 @@ mod tests {
 
     #[test]
     fn watermark_custom_color_and_clamping() {
-        let out = add_watermark_native(&sample(1), r#"{"text":"X","color":{"r":0.2,"g":0.4,"b":0.8}}"#).unwrap();
+        let out = add_watermark_native(
+            &sample(1),
+            r#"{"text":"X","color":{"r":0.2,"g":0.4,"b":0.8}}"#,
+        )
+        .unwrap();
         let ops = ops_of(&out, 0);
         let rg = last_op(&ops, "rg");
         assert_near(fnum(&rg.operands[0]), 0.2);
         assert_near(fnum(&rg.operands[1]), 0.4);
         assert_near(fnum(&rg.operands[2]), 0.8);
         // Out-of-range channels are clamped to [0, 1].
-        let out = add_watermark_native(&sample(1), r#"{"text":"X","color":{"r":5,"g":-1,"b":0.5}}"#).unwrap();
+        let out =
+            add_watermark_native(&sample(1), r#"{"text":"X","color":{"r":5,"g":-1,"b":0.5}}"#)
+                .unwrap();
         let ops = ops_of(&out, 0);
         let rg = last_op(&ops, "rg");
         assert_near(fnum(&rg.operands[0]), 1.0);
@@ -990,7 +1316,8 @@ mod tests {
     #[test]
     fn watermark_custom_font_size_scales_anchor() {
         // "WM" @ 100 pt = 177.7 pt wide; angle 0 -> x = 150 - 88.85 = 61.15, y = 200.
-        let out = add_watermark_native(&sample(1), r#"{"text":"WM","fontSize":100,"angle":0}"#).unwrap();
+        let out =
+            add_watermark_native(&sample(1), r#"{"text":"WM","fontSize":100,"angle":0}"#).unwrap();
         let ops = ops_of(&out, 0);
         assert_near(fnum(&last_op(&ops, "Tf").operands[1]), 100.0);
         let tm = last_op(&ops, "Tm");
@@ -1000,10 +1327,14 @@ mod tests {
 
     #[test]
     fn watermark_preserves_existing_content() {
-        let out = add_watermark_native(&sample_with_text(2, Some("Body")), r#"{"text":"SECRET"}"#).unwrap();
+        let out = add_watermark_native(&sample_with_text(2, Some("Body")), r#"{"text":"SECRET"}"#)
+            .unwrap();
         for i in 0..2 {
             let text = page_content_text(&out, i);
-            assert!(text.contains(&format!("Body {i}")), "original content lost: {text}");
+            assert!(
+                text.contains(&format!("Body {i}")),
+                "original content lost: {text}"
+            );
             assert!(text.contains("(SECRET)"));
             assert_eq!(count_op(&ops_of(&out, i), "Tj"), 2);
         }

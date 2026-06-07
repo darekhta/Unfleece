@@ -17,7 +17,24 @@ export interface PdfMetadata {
 
 // PDF date string (PDF 32000-1 §7.9.4): D:YYYY[MM[DD[HH[mm[SS[O[HH'mm']]]]]]]
 const PDF_DATE =
-  /^D:(\d{4})(\d{2})?(\d{2})?(\d{2})?(\d{2})?(\d{2})?([Zz]|[+-]\d{2}(?:'\d{2}'?)?)?$/;
+  /^D:(\d{4})(\d{2})?(\d{2})?(\d{2})?(\d{2})?(\d{2})?([Zz]|[+-]\d{2}(?:'?\d{2}'?)?)?$/;
+
+function validDateParts(year: number, month: number, day: number, hour: number, minute: number, second: number): boolean {
+  if (month < 1 || month > 12) return false;
+  if (day < 1 || day > 31) return false;
+  if (hour < 0 || hour > 23) return false;
+  if (minute < 0 || minute > 59) return false;
+  if (second < 0 || second > 59) return false;
+  const normalized = new Date(Date.UTC(year, month - 1, day, hour, minute, second));
+  return (
+    normalized.getUTCFullYear() === year &&
+    normalized.getUTCMonth() === month - 1 &&
+    normalized.getUTCDate() === day &&
+    normalized.getUTCHours() === hour &&
+    normalized.getUTCMinutes() === minute &&
+    normalized.getUTCSeconds() === second
+  );
+}
 
 /** Parse a PDF date string into a JS Date; `undefined` if absent/malformed. */
 function parsePdfDate(value: string | undefined): Date | undefined {
@@ -25,19 +42,26 @@ function parsePdfDate(value: string | undefined): Date | undefined {
   const match = PDF_DATE.exec(value.trim());
   if (!match) return undefined;
   const [, year, month = '01', day = '01', hour = '00', minute = '00', second = '00', tz] = match;
+  const parts = [+year, +month, +day, +hour, +minute, +second] as const;
+  if (!validDateParts(...parts)) return undefined;
   let offsetMinutes = 0;
   if (tz && tz !== 'Z' && tz !== 'z') {
     const sign = tz.startsWith('-') ? -1 : 1;
-    offsetMinutes = sign * (Number(tz.slice(1, 3)) * 60 + Number(tz.slice(4, 6) || '0'));
+    const digits = tz.slice(1).replace(/'/g, '');
+    const offsetHours = Number(digits.slice(0, 2));
+    const offsetMins = Number(digits.slice(2, 4) || '0');
+    if (offsetHours > 23 || offsetMins > 59) return undefined;
+    offsetMinutes = sign * (offsetHours * 60 + offsetMins);
   }
   const date = new Date(
-    Date.UTC(+year, +month - 1, +day, +hour, +minute, +second) - offsetMinutes * 60_000,
+    Date.UTC(parts[0], parts[1] - 1, parts[2], parts[3], parts[4], parts[5]) - offsetMinutes * 60_000,
   );
   return Number.isNaN(date.getTime()) ? undefined : date;
 }
 
 /** Format a JS Date as a UTC PDF date string (same shape as before: D:…Z). */
 function toPdfDate(date: Date): string {
+  if (Number.isNaN(date.getTime())) throw new Error('Invalid metadata date');
   const pad = (n: number, width = 2) => String(n).padStart(width, '0');
   return (
     `D:${pad(date.getUTCFullYear(), 4)}${pad(date.getUTCMonth() + 1)}${pad(date.getUTCDate())}` +

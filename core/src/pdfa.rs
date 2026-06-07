@@ -42,8 +42,10 @@ pub fn pdfa_from_png_pages_native(pack: &[u8]) -> Result<Vec<u8>, String> {
         .with_archival_validator(Archival::A2_B)
         .finish()
         .map_err(|e| format!("PDF/A configuration failed: {e:?}"))?;
-    let mut settings = SerializeSettings::default();
-    settings.configuration = configuration;
+    let settings = SerializeSettings {
+        configuration,
+        ..Default::default()
+    };
 
     let mut document = KrillaDocument::new_with(settings);
     document.set_metadata(
@@ -74,9 +76,10 @@ pub fn pdfa_from_png_pages_native(pack: &[u8]) -> Result<Vec<u8>, String> {
         let png = reader.read_bytes()?.to_vec();
         let image = Image::from_png(png.into(), false)
             .map_err(|e| format!("Invalid rendered page image: {e}"))?;
-        let page_settings =
-            PageSettings::from_wh(width, height).ok_or_else(|| "Invalid PDF/A page size".to_string())?;
-        let size = Size::from_wh(width, height).ok_or_else(|| "Invalid PDF/A image size".to_string())?;
+        let page_settings = PageSettings::from_wh(width, height)
+            .ok_or_else(|| "Invalid PDF/A page size".to_string())?;
+        let size =
+            Size::from_wh(width, height).ok_or_else(|| "Invalid PDF/A image size".to_string())?;
 
         let mut page = document.start_page_with(page_settings);
         let mut surface = page.surface();
@@ -85,7 +88,9 @@ pub fn pdfa_from_png_pages_native(pack: &[u8]) -> Result<Vec<u8>, String> {
         page.finish();
     }
 
-    reader.expect_done().map_err(|_| "PDF/A page pack has trailing data".to_string())?;
+    reader
+        .expect_done()
+        .map_err(|_| "PDF/A page pack has trailing data".to_string())?;
 
     document
         .finish()
@@ -119,7 +124,9 @@ mod tests {
         let out = pdfa_from_png_pages_native(&pdfa_pack(PNG_1X1, 100.0, 120.0)).unwrap();
         assert!(out.starts_with(b"%PDF-"));
         assert_eq!(page_count_native(&out).unwrap(), 1);
-        assert!(out.windows(b"pdfaid:part".len()).any(|w| w == b"pdfaid:part"));
+        assert!(out
+            .windows(b"pdfaid:part".len())
+            .any(|w| w == b"pdfaid:part"));
     }
 
     #[test]

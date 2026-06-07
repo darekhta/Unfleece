@@ -113,8 +113,10 @@ mod tests {
     fn sample_inherited_media_box(width: i64) -> Vec<u8> {
         let mut doc = Document::with_version("1.5");
         let pages_id = doc.new_object_id();
-        let content_id =
-            doc.add_object(Stream::new(dictionary! {}, Content { operations: vec![] }.encode().unwrap()));
+        let content_id = doc.add_object(Stream::new(
+            dictionary! {},
+            Content { operations: vec![] }.encode().unwrap(),
+        ));
         let page_id = doc.add_object(dictionary! {
             "Type" => "Page",
             "Parent" => pages_id,
@@ -140,8 +142,10 @@ mod tests {
     fn sample_real_media_box(width: f32, height: f32) -> Vec<u8> {
         let mut doc = Document::with_version("1.5");
         let pages_id = doc.new_object_id();
-        let content_id =
-            doc.add_object(Stream::new(dictionary! {}, Content { operations: vec![] }.encode().unwrap()));
+        let content_id = doc.add_object(Stream::new(
+            dictionary! {},
+            Content { operations: vec![] }.encode().unwrap(),
+        ));
         let page_id = doc.add_object(dictionary! {
             "Type" => "Page",
             "Parent" => pages_id,
@@ -240,13 +244,20 @@ mod tests {
         let out = merge_pdfs_native(&pack(&[&a, &b])).unwrap();
         let doc = Document::load_mem(&out).unwrap();
         let pages: Vec<_> = doc.page_iter().collect();
-        assert_eq!(effective_media_box(&doc, pages[0]).unwrap(), [0.0, 0.0, 612.5, 792.25]);
-        assert_eq!(effective_media_box(&doc, pages[1]).unwrap(), [0.0, 0.0, 1224.0, 144.0]);
+        assert_eq!(
+            effective_media_box(&doc, pages[0]).unwrap(),
+            [0.0, 0.0, 612.5, 792.25]
+        );
+        assert_eq!(
+            effective_media_box(&doc, pages[1]).unwrap(),
+            [0.0, 0.0, 1224.0, 144.0]
+        );
     }
 
     #[test]
     fn materializes_inherited_media_box_onto_pages() {
-        let out = merge_pdfs_native(&pack(&[&sample(1), &sample_inherited_media_box(720)])).unwrap();
+        let out =
+            merge_pdfs_native(&pack(&[&sample(1), &sample_inherited_media_box(720)])).unwrap();
         // page_width reads MediaBox directly off the page dict, so this also
         // proves the inherited attribute was copied down before re-parenting.
         assert_eq!(page_width(&out, 0), 300.0);
@@ -257,12 +268,27 @@ mod tests {
     fn rebuilds_page_tree_with_accurate_count_and_parents() {
         let out = merge_pdfs_native(&pack(&[&sample(3), &sample(2)])).unwrap();
         let doc = Document::load_mem(&out).unwrap();
-        let root_id = doc.catalog().unwrap().get(b"Pages").unwrap().as_reference().unwrap();
+        let root_id = doc
+            .catalog()
+            .unwrap()
+            .get(b"Pages")
+            .unwrap()
+            .as_reference()
+            .unwrap();
         let pages_dict = doc.get_dictionary(root_id).unwrap();
         assert_eq!(pages_dict.get(b"Count").unwrap().as_i64().unwrap(), 5);
-        assert_eq!(pages_dict.get(b"Kids").unwrap().as_array().unwrap().len(), 5);
+        assert_eq!(
+            pages_dict.get(b"Kids").unwrap().as_array().unwrap().len(),
+            5
+        );
         for id in doc.page_iter().collect::<Vec<_>>() {
-            let parent = doc.get_dictionary(id).unwrap().get(b"Parent").unwrap().as_reference().unwrap();
+            let parent = doc
+                .get_dictionary(id)
+                .unwrap()
+                .get(b"Parent")
+                .unwrap()
+                .as_reference()
+                .unwrap();
             assert_eq!(parent, root_id);
         }
     }
@@ -272,8 +298,16 @@ mod tests {
         let out = merge_pdfs_native(&pack(&[&sample_with_doc_structures(2), &sample(1)])).unwrap();
         let doc = Document::load_mem(&out).unwrap();
         let catalog = doc.catalog().unwrap();
-        for key in [b"Outlines".as_slice(), b"AcroForm".as_slice(), b"Names".as_slice()] {
-            assert!(!catalog.has(key), "catalog still has {}", String::from_utf8_lossy(key));
+        for key in [
+            b"Outlines".as_slice(),
+            b"AcroForm".as_slice(),
+            b"Names".as_slice(),
+        ] {
+            assert!(
+                !catalog.has(key),
+                "catalog still has {}",
+                String::from_utf8_lossy(key)
+            );
         }
         // The orphaned outline object itself must have been pruned too.
         let has_outlines_obj = doc.objects.values().any(|o| {
@@ -324,7 +358,10 @@ mod tests {
         let once = merge_pdfs_native(&pack(&[&sample(2), &sample(1)])).unwrap();
         let twice = merge_pdfs_native(&pack(&[&once, &sample(3)])).unwrap();
         assert_eq!(page_count_native(&twice).unwrap(), 6);
-        for (i, want) in [300.0, 301.0, 300.0, 300.0, 301.0, 302.0].iter().enumerate() {
+        for (i, want) in [300.0, 301.0, 300.0, 300.0, 301.0, 302.0]
+            .iter()
+            .enumerate()
+        {
             assert_eq!(page_width(&twice, i), *want, "page {i}");
         }
     }
@@ -349,8 +386,14 @@ mod tests {
     #[test]
     fn rejects_truncated_pack() {
         // Declares two documents but provides only one.
-        let truncated = PackWriter::new(MERGE_PACK_MAGIC).u32(2).bytes(&sample(1)).finish();
-        assert_eq!(merge_pdfs_native(&truncated).unwrap_err(), "Input pack ended early");
+        let truncated = PackWriter::new(MERGE_PACK_MAGIC)
+            .u32(2)
+            .bytes(&sample(1))
+            .finish();
+        assert_eq!(
+            merge_pdfs_native(&truncated).unwrap_err(),
+            "Input pack ended early"
+        );
 
         // Magic only — count itself is missing.
         assert_eq!(
@@ -363,7 +406,10 @@ mod tests {
     fn rejects_trailing_data() {
         let mut p = pack(&[&sample(1)]);
         p.extend_from_slice(b"junk");
-        assert_eq!(merge_pdfs_native(&p).unwrap_err(), "Input pack has trailing data");
+        assert_eq!(
+            merge_pdfs_native(&p).unwrap_err(),
+            "Input pack has trailing data"
+        );
     }
 
     #[test]

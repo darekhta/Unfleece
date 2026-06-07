@@ -40,7 +40,11 @@ struct BookletOptions {
 
 impl Default for BookletOptions {
     fn default() -> Self {
-        Self { page_size: "a4".to_string(), binding: "left".to_string(), margin: 18.0 }
+        Self {
+            page_size: "a4".to_string(),
+            binding: "left".to_string(),
+            margin: 18.0,
+        }
     }
 }
 
@@ -94,9 +98,15 @@ fn embed_pages(doc: &mut Document) -> Result<Vec<EmbeddedPage>, String> {
             }
         }
 
-        let resources = match doc.get_dictionary(page_id).map_err(|e| e.to_string())?.get(b"Resources") {
+        let resources = match doc
+            .get_dictionary(page_id)
+            .map_err(|e| e.to_string())?
+            .get(b"Resources")
+        {
             Ok(value) => Some(value.clone()),
-            Err(_) => inherited_page_value(doc, page_id, b"Resources").map_err(|e| e.to_string())?,
+            Err(_) => {
+                inherited_page_value(doc, page_id, b"Resources").map_err(|e| e.to_string())?
+            }
         };
 
         let mut dict = dictionary! {
@@ -114,7 +124,11 @@ fn embed_pages(doc: &mut Document) -> Result<Vec<EmbeddedPage>, String> {
         }
 
         let id = doc.add_object(Stream::new(dict, content));
-        embedded.push(EmbeddedPage { id, width: right - left, height: top - bottom });
+        embedded.push(EmbeddedPage {
+            id,
+            width: right - left,
+            height: top - bottom,
+        });
     }
 
     Ok(embedded)
@@ -147,7 +161,14 @@ fn add_sheet(
         operations.push(Operation::new("q", vec![]));
         operations.push(Operation::new(
             "cm",
-            vec![scale.into(), 0f32.into(), 0f32.into(), scale.into(), x.into(), y.into()],
+            vec![
+                scale.into(),
+                0f32.into(),
+                0f32.into(),
+                scale.into(),
+                x.into(),
+                y.into(),
+            ],
         ));
         operations.push(Operation::new("Do", vec![Object::Name(name.into_bytes())]));
         operations.push(Operation::new("Q", vec![]));
@@ -174,7 +195,11 @@ fn add_sheet(
 /// from the source page tree onto the sheets. Document-level structures that
 /// can reference the removed source pages are dropped, matching pdf-lib's
 /// "build a brand-new document" behavior (and `select_pages_native`).
-fn install_sheets(doc: &mut Document, pages_id: ObjectId, sheet_ids: &[ObjectId]) -> Result<(), String> {
+fn install_sheets(
+    doc: &mut Document,
+    pages_id: ObjectId,
+    sheet_ids: &[ObjectId],
+) -> Result<(), String> {
     let kids: Vec<Object> = sheet_ids.iter().map(|&id| Object::Reference(id)).collect();
     let count = kids.len() as i64;
     doc.objects.insert(
@@ -230,7 +255,9 @@ pub fn n_up_native(data: &[u8], per_sheet: u32, opts_json: &str) -> Result<Vec<u
     while i < embedded.len() {
         let mut placements = Vec::new();
         for j in 0..per {
-            let Some(page) = embedded.get(i + j) else { break };
+            let Some(page) = embedded.get(i + j) else {
+                break;
+            };
             let col = (j % cols) as f32;
             let row = (j / cols) as f32;
             // Rows fill top-to-bottom; PDF origin is bottom-left (parity with TS).
@@ -244,7 +271,13 @@ pub fn n_up_native(data: &[u8], per_sheet: u32, opts_json: &str) -> Result<Vec<u
                 },
             ));
         }
-        sheets.push(add_sheet(&mut doc, pages_id, sheet_w, sheet_h, &placements)?);
+        sheets.push(add_sheet(
+            &mut doc,
+            pages_id,
+            sheet_w,
+            sheet_h,
+            &placements,
+        )?);
         i += per;
     }
 
@@ -296,16 +329,33 @@ pub fn booklet_native(data: &[u8], opts_json: &str) -> Result<Vec<u8>, String> {
     let pages_id = doc.new_object_id();
     let mut sheets = Vec::new();
     for spread in spreads {
-        let ordered = if right_bound { [spread[1], spread[0]] } else { spread };
+        let ordered = if right_bound {
+            [spread[1], spread[0]]
+        } else {
+            spread
+        };
         let mut placements = Vec::new();
         for (slot, &page_index) in ordered.iter().enumerate() {
-            let Some(page) = embedded.get(page_index) else { continue }; // padding: blank slot
+            let Some(page) = embedded.get(page_index) else {
+                continue;
+            }; // padding: blank slot
             placements.push((
                 page,
-                CellBox { x: margin + slot as f32 * cell_w, y: margin, w: cell_w, h: cell_h },
+                CellBox {
+                    x: margin + slot as f32 * cell_w,
+                    y: margin,
+                    w: cell_w,
+                    h: cell_h,
+                },
             ));
         }
-        sheets.push(add_sheet(&mut doc, pages_id, sheet_w, sheet_h, &placements)?);
+        sheets.push(add_sheet(
+            &mut doc,
+            pages_id,
+            sheet_w,
+            sheet_h,
+            &placements,
+        )?);
     }
 
     install_sheets(&mut doc, pages_id, &sheets)?;
@@ -419,7 +469,11 @@ mod tests {
         let scale = (cell.w / pw).min(cell.h / ph);
         let w = pw * scale;
         let h = ph * scale;
-        (scale, cell.x + (cell.w - w) / 2.0, cell.y + (cell.h - h) / 2.0)
+        (
+            scale,
+            cell.x + (cell.w - w) / 2.0,
+            cell.y + (cell.h - h) / 2.0,
+        )
     }
 
     // ------------------------------------------------------------------ n-up
@@ -448,15 +502,24 @@ mod tests {
         assert_eq!(cms.len(), 2);
 
         // Page 0 (300x400) in the top cell.
-        let top_cell = CellBox { x: N_UP_GAP, y: A4_H - N_UP_GAP - cell_h, w: cell_w, h: cell_h };
+        let top_cell = CellBox {
+            x: N_UP_GAP,
+            y: A4_H - N_UP_GAP - cell_h,
+            w: cell_w,
+            h: cell_h,
+        };
         let (s0, x0, y0) = fitted(300.0, 400.0, &top_cell);
         assert_close(cms[0][0], s0, "top scale");
         assert_close(cms[0][4], x0, "top x");
         assert_close(cms[0][5], y0, "top y");
 
         // Page 1 (301x400) in the bottom cell — strictly below the top one.
-        let bottom_cell =
-            CellBox { x: N_UP_GAP, y: A4_H - N_UP_GAP - 2.0 * cell_h - N_UP_GAP, w: cell_w, h: cell_h };
+        let bottom_cell = CellBox {
+            x: N_UP_GAP,
+            y: A4_H - N_UP_GAP - 2.0 * cell_h - N_UP_GAP,
+            w: cell_w,
+            h: cell_h,
+        };
         let (s1, x1, y1) = fitted(301.0, 400.0, &bottom_cell);
         assert_close(cms[1][0], s1, "bottom scale");
         assert_close(cms[1][4], x1, "bottom x");
@@ -528,7 +591,12 @@ mod tests {
 
         let cell_w = (A4_W - N_UP_GAP * 3.0) / 2.0;
         let cell_h = (A4_H - N_UP_GAP * 3.0) / 2.0;
-        let cell = CellBox { x: N_UP_GAP, y: A4_H - N_UP_GAP - cell_h, w: cell_w, h: cell_h };
+        let cell = CellBox {
+            x: N_UP_GAP,
+            y: A4_H - N_UP_GAP - cell_h,
+            w: cell_w,
+            h: cell_h,
+        };
         let (s, x, y) = fitted(300.0, 400.0, &cell);
         assert_close(cm[0], s, "scale");
         assert_close(cm[4], x, "x");
@@ -578,14 +646,28 @@ mod tests {
         let out = n_up_native(&sample_with_text(2, Some("Hello")), 2, "{}").unwrap();
         for (i, name) in ["P0", "P1"].iter().enumerate() {
             let form = slot_form(&out, 0, name);
-            assert_eq!(form.dict.get(b"Subtype").unwrap().as_name().unwrap(), b"Form");
-            assert!(form.dict.has(b"Resources"), "form must carry page Resources");
+            assert_eq!(
+                form.dict.get(b"Subtype").unwrap().as_name().unwrap(),
+                b"Form"
+            );
+            assert!(
+                form.dict.has(b"Resources"),
+                "form must carry page Resources"
+            );
             // Tiny streams may legitimately stay uncompressed (lopdf only adds
             // a Filter when flate actually shrinks them).
-            let body = form.decompressed_content().unwrap_or_else(|_| form.content.clone());
+            let body = form
+                .decompressed_content()
+                .unwrap_or_else(|_| form.content.clone());
             let text = String::from_utf8_lossy(&body);
-            assert!(text.contains("Tj"), "form content must keep text ops: {text}");
-            assert!(text.contains(&format!("Hello {i}")), "form {name} draws its page text");
+            assert!(
+                text.contains("Tj"),
+                "form content must keep text ops: {text}"
+            );
+            assert!(
+                text.contains(&format!("Hello {i}")),
+                "form {name} draws its page text"
+            );
         }
     }
 
@@ -594,7 +676,11 @@ mod tests {
         let mut doc = Document::load_mem(&sample(1)).unwrap();
         let page = doc.page_iter().next().unwrap();
         let array: Vec<Object> = media_box.iter().map(|&v| Object::Real(v)).collect();
-        doc.get_object_mut(page).unwrap().as_dict_mut().unwrap().set("MediaBox", array);
+        doc.get_object_mut(page)
+            .unwrap()
+            .as_dict_mut()
+            .unwrap()
+            .set("MediaBox", array);
         let mut buf = Vec::new();
         doc.save_to(&mut buf).unwrap();
         buf
@@ -606,8 +692,14 @@ mod tests {
         for mb in [[100.0, 50.0, 400.0, 450.0], [400.0, 450.0, 100.0, 50.0]] {
             let out = n_up_native(&with_media_box(mb), 2, "{}").unwrap();
             let form = slot_form(&out, 0, "P0");
-            assert_eq!(form_numbers(&form, b"BBox"), vec![100.0, 50.0, 400.0, 450.0]);
-            assert_eq!(form_numbers(&form, b"Matrix"), vec![1.0, 0.0, 0.0, 1.0, -100.0, -50.0]);
+            assert_eq!(
+                form_numbers(&form, b"BBox"),
+                vec![100.0, 50.0, 400.0, 450.0]
+            );
+            assert_eq!(
+                form_numbers(&form, b"Matrix"),
+                vec![1.0, 0.0, 0.0, 1.0, -100.0, -50.0]
+            );
             // Placement math sees a 300x400 page, same as the zero-origin fixture.
             let zero = n_up_native(&sample(1), 2, "{}").unwrap();
             assert_eq!(cm_ops(&out, 0), cm_ops(&zero, 0));
@@ -629,7 +721,10 @@ mod tests {
     #[test]
     fn booklet_spread_order_matches_ts_formula() {
         assert_eq!(left_bound_spread_order(4), vec![[3, 0], [1, 2]]);
-        assert_eq!(left_bound_spread_order(8), vec![[7, 0], [1, 6], [5, 2], [3, 4]]);
+        assert_eq!(
+            left_bound_spread_order(8),
+            vec![[7, 0], [1, 6], [5, 2], [3, 4]]
+        );
     }
 
     #[test]
@@ -678,7 +773,10 @@ mod tests {
         // Right slot box starts at margin + cellW.
         let cell_w = (A4_H - 18.0 * 2.0) / 2.0;
         let cms = cm_ops(&out, 0);
-        assert!(cms[1][4] >= 18.0 + cell_w - EPS, "second placement in right half");
+        assert!(
+            cms[1][4] >= 18.0 + cell_w - EPS,
+            "second placement in right half"
+        );
     }
 
     #[test]
@@ -705,7 +803,12 @@ mod tests {
         let cell_h = A4_W - margin * 2.0;
 
         // Spread 0 left slot holds page 3 (303x400): width-limited fit.
-        let cell = CellBox { x: margin, y: margin, w: cell_w, h: cell_h };
+        let cell = CellBox {
+            x: margin,
+            y: margin,
+            w: cell_w,
+            h: cell_h,
+        };
         let (s, x, y) = fitted(303.0, 400.0, &cell);
         let cms = cm_ops(&out, 0);
         assert_close(cms[0][0], s, "scale");
@@ -749,7 +852,8 @@ mod tests {
         assert_close(cm_ops(&out, 0)[0][4], 18.0, "default margin 18");
 
         // Unknown page size falls back to a4; unknown binding falls back to left.
-        let out = booklet_native(&sample(4), r#"{"pageSize":"tabloid","binding":"middle"}"#).unwrap();
+        let out =
+            booklet_native(&sample(4), r#"{"pageSize":"tabloid","binding":"middle"}"#).unwrap();
         let (w, _) = page_size(&out, 0);
         assert_close(w, A4_H, "fallback a4 width");
         let bb = form_numbers(&slot_form(&out, 0, "P0"), b"BBox");
@@ -778,7 +882,9 @@ mod tests {
         assert_eq!(page_count(&out), 2);
         let form = slot_form(&out, 0, "P1"); // page 0
         assert!(form.dict.has(b"Resources"));
-        let body = form.decompressed_content().unwrap_or_else(|_| form.content.clone());
+        let body = form
+            .decompressed_content()
+            .unwrap_or_else(|_| form.content.clone());
         assert!(String::from_utf8_lossy(&body).contains("Spread 0"));
     }
 }

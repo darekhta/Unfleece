@@ -6,7 +6,7 @@ import { PDFArray, PDFDict, PDFDocument, PDFName, PDFString } from '@cantoo/pdf-
 import { getMetadata, setMetadata, stripMetadata } from '@lib/tools/metadata.js';
 import { protectPdf, sanitizePdf } from '@lib/tools/security.js';
 import { wasmSetMetadata } from '@lib/wasm/core.js';
-import { isPdf, load, makeFormPdf, makeSamplePdf, pageCount } from './_fixtures.js';
+import { isPdf, load, makeFormPdf, makePdfWithRawContent, makeSamplePdf, pageCount } from './_fixtures.js';
 
 const asLatin1 = (bytes: Uint8Array) => new TextDecoder('latin1').decode(bytes);
 
@@ -88,6 +88,29 @@ describe('metadata (Rust core)', () => {
     const meta = await getMetadata(out);
     expect(meta.creationDate?.getTime()).toBe(Date.UTC(2025, 5, 7, 10, 0, 0));
     expect(meta.modificationDate?.getTime()).toBe(Date.UTC(2025, 5, 7, 12, 0, 0));
+  });
+
+  it('parses compact timezone-offset PDF dates (D:…+0200)', async () => {
+    const out = await wasmSetMetadata(await makeSamplePdf(1), {
+      creationDate: 'D:20250607120000+0200',
+    });
+    expect((await getMetadata(out)).creationDate?.getTime()).toBe(Date.UTC(2025, 5, 7, 10, 0, 0));
+  });
+
+  it('ignores malformed PDF dates instead of normalizing them', async () => {
+    const out = await wasmSetMetadata(await makeSamplePdf(1), {
+      creationDate: 'D:20241301000000Z',
+      modificationDate: 'D:20240230000000Z',
+    });
+    const meta = await getMetadata(out);
+    expect(meta.creationDate).toBeUndefined();
+    expect(meta.modificationDate).toBeUndefined();
+  });
+
+  it('rejects invalid JS Date objects before writing metadata', async () => {
+    await expect(setMetadata(await makeSamplePdf(1), { creationDate: new Date(Number.NaN) })).rejects.toThrow(
+      'Invalid metadata date',
+    );
   });
 
   it('after stripMetadata only pageCount remains', async () => {
@@ -190,6 +213,15 @@ describe('sanitizePdf (Rust core)', () => {
   it('rejects password-protected PDFs with a friendly message', async () => {
     const locked = await protectPdf(await makeSamplePdf(1), { userPassword: 'secret' });
     await expect(sanitizePdf(locked)).rejects.toThrow(/password-protected.*Unlock/i);
+  });
+
+  it('does not mistake a plain /Encrypt token for password protection', async () => {
+    const plain = makePdfWithRawContent('% /Encrypt appears in page content only');
+    expect(asLatin1(plain)).toContain('/Encrypt');
+
+    const out = await sanitizePdf(plain);
+    expect(isPdf(out)).toBe(true);
+    expect(await pageCount(out)).toBe(1);
   });
 
   it('keeps all pages of a multi-page document and reports Rust-core progress', async () => {

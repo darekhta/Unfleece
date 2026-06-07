@@ -76,7 +76,10 @@ pub fn stamp_images_native(data: &[u8], pack: &[u8]) -> Result<Vec<u8>, String> 
 
     // Pull inherited attributes (notably /Resources) down onto every touched page
     // and collect resource names already in use so fresh names cannot collide.
-    let touched: BTreeSet<ObjectId> = stamps.iter().map(|s| pages[s.page_index as usize]).collect();
+    let touched: BTreeSet<ObjectId> = stamps
+        .iter()
+        .map(|s| pages[s.page_index as usize])
+        .collect();
     let mut used_names: BTreeSet<Vec<u8>> = BTreeSet::new();
     for &page_id in &touched {
         materialize_inherited_page_attrs(&mut doc, page_id).map_err(|e| e.to_string())?;
@@ -108,7 +111,16 @@ pub fn stamp_images_native(data: &[u8], pack: &[u8]) -> Result<Vec<u8>, String> 
                     _ => embed_jpeg(&mut doc, stamp.image)?,
                 };
                 let name = fresh_name("UfImg", &mut img_counter, &mut used_names);
-                images.push((stamp.kind, stamp.image, EmbeddedImage { xobject, name, pixel_width, pixel_height }));
+                images.push((
+                    stamp.kind,
+                    stamp.image,
+                    EmbeddedImage {
+                        xobject,
+                        name,
+                        pixel_width,
+                        pixel_height,
+                    },
+                ));
                 images.len() - 1
             }
         };
@@ -157,7 +169,10 @@ pub fn stamp_images_native(data: &[u8], pack: &[u8]) -> Result<Vec<u8>, String> 
         if let Some((_, ref gs_name)) = gs {
             operations.push(Operation::new("gs", vec![Object::Name(gs_name.clone())]));
         }
-        operations.push(Operation::new("Do", vec![Object::Name(embedded.name.clone())]));
+        operations.push(Operation::new(
+            "Do",
+            vec![Object::Name(embedded.name.clone())],
+        ));
         operations.push(Operation::new("Q", vec![]));
         let encoded = Content { operations }.encode().map_err(|e| e.to_string())?;
         let buf = page_ops.entry(page_id).or_default();
@@ -166,23 +181,52 @@ pub fn stamp_images_native(data: &[u8], pack: &[u8]) -> Result<Vec<u8>, String> 
         }
         buf.extend_from_slice(&encoded);
 
-        push_unique(page_xobjects.entry(page_id).or_default(), embedded.name.clone(), embedded.xobject);
+        push_unique(
+            page_xobjects.entry(page_id).or_default(),
+            embedded.name.clone(),
+            embedded.xobject,
+        );
         if let Some((gs_id, gs_name)) = gs {
             push_unique(page_gstates.entry(page_id).or_default(), gs_name, gs_id);
         }
     }
 
+    let (push_id, pop_id) = wrap_stream_ids(&mut doc)?;
     for (page_id, ops) in &page_ops {
         register_page_resources(
             &mut doc,
             *page_id,
-            page_xobjects.get(page_id).map(|v| v.as_slice()).unwrap_or(&[]),
-            page_gstates.get(page_id).map(|v| v.as_slice()).unwrap_or(&[]),
+            page_xobjects
+                .get(page_id)
+                .map(|v| v.as_slice())
+                .unwrap_or(&[]),
+            page_gstates
+                .get(page_id)
+                .map(|v| v.as_slice())
+                .unwrap_or(&[]),
         )?;
-        append_page_content(&mut doc, *page_id, ops)?;
+        append_page_content(&mut doc, *page_id, ops, push_id, pop_id)?;
     }
 
     save_compact(doc).map_err(|e| e.to_string())
+}
+
+fn content_bytes(operations: Vec<Operation>) -> Result<Vec<u8>, String> {
+    let body = Content { operations }.encode().map_err(|e| e.to_string())?;
+    let mut bytes = Vec::with_capacity(body.len() + 2);
+    bytes.push(b'\n');
+    bytes.extend(body);
+    bytes.push(b'\n');
+    Ok(bytes)
+}
+
+fn wrap_stream_ids(doc: &mut Document) -> Result<(ObjectId, ObjectId), String> {
+    let push = content_bytes(vec![Operation::new("q", vec![])])?;
+    let pop = content_bytes(vec![Operation::new("Q", vec![])])?;
+    Ok((
+        doc.add_object(Stream::new(dictionary! {}, push)),
+        doc.add_object(Stream::new(dictionary! {}, pop)),
+    ))
 }
 
 fn parse_pack(pack: &[u8]) -> Result<Vec<Stamp<'_>>, String> {
@@ -354,8 +398,12 @@ fn resolve_dict<'a>(doc: &'a Document, obj: Option<&'a Object>) -> Option<&'a Di
 
 /// Record every `/XObject` and `/ExtGState` resource name already used by a page.
 fn collect_resource_names(doc: &Document, page_id: ObjectId, used: &mut BTreeSet<Vec<u8>>) {
-    let Ok(page) = doc.get_dictionary(page_id) else { return };
-    let Some(res) = resolve_dict(doc, page.get(b"Resources").ok()) else { return };
+    let Ok(page) = doc.get_dictionary(page_id) else {
+        return;
+    };
+    let Some(res) = resolve_dict(doc, page.get(b"Resources").ok()) else {
+        return;
+    };
     for key in [b"XObject".as_slice(), b"ExtGState".as_slice()] {
         if let Some(sub) = resolve_dict(doc, res.get(key).ok()) {
             for (name, _) in sub.iter() {
@@ -417,24 +465,61 @@ fn merge_subdict(
     Ok(())
 }
 
-/// Replace the page's `/Contents` with `q <existing> Q <ops>` so the stamps draw
-/// on top, unaffected by any graphics state the original content leaves behind.
-fn append_page_content(doc: &mut Document, page_id: ObjectId, ops: &[u8]) -> Result<(), String> {
-    let existing = doc.get_page_content(page_id).unwrap_or_default();
-    let mut combined = Vec::with_capacity(existing.len() + ops.len() + 8);
-    if !existing.is_empty() {
-        combined.extend_from_slice(b"q\n");
-        combined.extend_from_slice(&existing);
-        combined.extend_from_slice(b"\nQ\n");
+/// Append the stamp stream without decoding existing page content. Existing
+/// streams are bracketed by shared `q`/`Q` wrapper streams so a dangling source
+/// graphics state cannot displace the stamp.
+fn append_page_content(
+    doc: &mut Document,
+    page_id: ObjectId,
+    ops: &[u8],
+    push_id: ObjectId,
+    pop_id: ObjectId,
+) -> Result<(), String> {
+    enum Existing {
+        None,
+        Items(Vec<Object>),
+        Inline(Box<Stream>),
     }
-    combined.extend_from_slice(ops);
-    let stream_id = doc.add_object(Stream::new(dictionary! {}, combined));
+    let existing = {
+        let dict = doc.get_dictionary(page_id).map_err(|e| e.to_string())?;
+        match dict.get(b"Contents") {
+            Ok(Object::Reference(id)) => Existing::Items(vec![Object::Reference(*id)]),
+            Ok(Object::Array(items)) => Existing::Items(items.clone()),
+            Ok(Object::Stream(s)) => Existing::Inline(Box::new(s.clone())),
+            Ok(_) => return Err("Page /Contents is not a stream or array".to_string()),
+            Err(_) => Existing::None,
+        }
+    };
+    let items = match existing {
+        Existing::None => Vec::new(),
+        Existing::Items(items) => items,
+        Existing::Inline(s) => vec![Object::Reference(doc.add_object(*s))],
+    };
+    let stream_id = doc.add_object(Stream::new(dictionary! {}, padded_bytes(ops)));
+    let contents: Vec<Object> = if items.is_empty() {
+        vec![Object::Reference(stream_id)]
+    } else {
+        let mut v = Vec::with_capacity(items.len() + 3);
+        v.push(Object::Reference(push_id));
+        v.extend(items);
+        v.push(Object::Reference(pop_id));
+        v.push(Object::Reference(stream_id));
+        v
+    };
     doc.get_object_mut(page_id)
         .map_err(|e| e.to_string())?
         .as_dict_mut()
         .map_err(|e| e.to_string())?
-        .set("Contents", Object::Reference(stream_id));
+        .set("Contents", contents);
     Ok(())
+}
+
+fn padded_bytes(bytes: &[u8]) -> Vec<u8> {
+    let mut out = Vec::with_capacity(bytes.len() + 2);
+    out.push(b'\n');
+    out.extend_from_slice(bytes);
+    out.push(b'\n');
+    out
 }
 
 // ---------------------------------------------------------------------------
@@ -465,10 +550,22 @@ mod tests {
 
     impl<'a> Place<'a> {
         fn png(page: u32, image: &'a [u8]) -> Self {
-            Self { kind: 0, page, x: 10.0, y: 20.0, w: 100.0, h: 0.0, opacity: 1.0, image }
+            Self {
+                kind: 0,
+                page,
+                x: 10.0,
+                y: 20.0,
+                w: 100.0,
+                h: 0.0,
+                opacity: 1.0,
+                image,
+            }
         }
         fn jpeg(page: u32, image: &'a [u8]) -> Self {
-            Self { kind: 1, ..Self::png(page, image) }
+            Self {
+                kind: 1,
+                ..Self::png(page, image)
+            }
         }
     }
 
@@ -489,30 +586,70 @@ mod tests {
     }
 
     fn rgb_png(w: u32, h: u32) -> Vec<u8> {
-        let img = image::RgbImage::from_fn(w, h, |x, y| image::Rgb([(x * 37) as u8, (y * 53) as u8, 128]));
+        let img = image::RgbImage::from_fn(w, h, |x, y| {
+            image::Rgb([(x * 37) as u8, (y * 53) as u8, 128])
+        });
         let mut out = std::io::Cursor::new(Vec::new());
-        image::DynamicImage::ImageRgb8(img).write_to(&mut out, image::ImageFormat::Png).unwrap();
+        image::DynamicImage::ImageRgb8(img)
+            .write_to(&mut out, image::ImageFormat::Png)
+            .unwrap();
         out.into_inner()
     }
 
     fn rgba_png(w: u32, h: u32) -> Vec<u8> {
-        let img = image::RgbaImage::from_fn(w, h, |x, _| image::Rgba([200, 30, 40, (x * 80) as u8]));
+        let img =
+            image::RgbaImage::from_fn(w, h, |x, _| image::Rgba([200, 30, 40, (x * 80) as u8]));
         let mut out = std::io::Cursor::new(Vec::new());
-        image::DynamicImage::ImageRgba8(img).write_to(&mut out, image::ImageFormat::Png).unwrap();
+        image::DynamicImage::ImageRgba8(img)
+            .write_to(&mut out, image::ImageFormat::Png)
+            .unwrap();
         out.into_inner()
     }
 
     fn rgb_jpeg(w: u32, h: u32) -> Vec<u8> {
         let img = image::RgbImage::from_pixel(w, h, image::Rgb([180, 90, 45]));
         let mut out = std::io::Cursor::new(Vec::new());
-        image::DynamicImage::ImageRgb8(img).write_to(&mut out, image::ImageFormat::Jpeg).unwrap();
+        image::DynamicImage::ImageRgb8(img)
+            .write_to(&mut out, image::ImageFormat::Jpeg)
+            .unwrap();
         out.into_inner()
+    }
+
+    fn pdf_with_filtered_raw_content() -> Vec<u8> {
+        let mut doc = Document::with_version("1.5");
+        let pages_id = doc.new_object_id();
+        let content_id = doc.add_object(Stream::new(
+            dictionary! { "Filter" => "DCTDecode" },
+            b"raw-original-content-sentinel".to_vec(),
+        ));
+        let page_id = doc.add_object(dictionary! {
+            "Type" => "Page",
+            "Parent" => pages_id,
+            "Contents" => content_id,
+            "Resources" => Dictionary::new(),
+            "MediaBox" => vec![0.into(), 0.into(), 300.into(), 400.into()],
+        });
+        doc.objects.insert(
+            pages_id,
+            Object::Dictionary(dictionary! {
+                "Type" => "Pages",
+                "Kids" => vec![page_id.into()],
+                "Count" => 1,
+            }),
+        );
+        let catalog_id = doc.add_object(dictionary! { "Type" => "Catalog", "Pages" => pages_id });
+        doc.trailer.set("Root", catalog_id);
+        let mut buf = Vec::new();
+        doc.save_to(&mut buf).unwrap();
+        buf
     }
 
     fn gray_jpeg(w: u32, h: u32) -> Vec<u8> {
         let img = image::GrayImage::from_pixel(w, h, image::Luma([99]));
         let mut out = std::io::Cursor::new(Vec::new());
-        image::DynamicImage::ImageLuma8(img).write_to(&mut out, image::ImageFormat::Jpeg).unwrap();
+        image::DynamicImage::ImageLuma8(img)
+            .write_to(&mut out, image::ImageFormat::Jpeg)
+            .unwrap();
         out.into_inner()
     }
 
@@ -558,7 +695,12 @@ mod tests {
         let ops = Content::decode(&content).unwrap().operations;
         ops.iter()
             .find(|op| op.operator == "cm")
-            .map(|op| op.operands.iter().map(|o| number_as_f32(o).unwrap()).collect())
+            .map(|op| {
+                op.operands
+                    .iter()
+                    .map(|o| number_as_f32(o).unwrap())
+                    .collect()
+            })
             .expect("page has a cm operator")
     }
 
@@ -593,12 +735,39 @@ mod tests {
         let pdf = sample_with_text(1, Some("Hello"));
         let out = stamp_images_native(&pdf, &pack(&[Place::png(0, PNG_1X1)])).unwrap();
         let text = page_content_text(&out, 0);
-        assert!(text.starts_with("q\n"), "existing content should be wrapped: {text}");
+        assert!(
+            text.trim_start().starts_with("q\n"),
+            "existing content should be wrapped: {text}"
+        );
         assert!(text.contains("Hello 0"), "original text lost: {text}");
         assert!(text.contains("Tj"));
         assert!(text.contains("/UfImg0 Do"));
         // Stamp comes after (on top of) the original content.
         assert!(text.find("Tj").unwrap() < text.find("/UfImg0 Do").unwrap());
+    }
+
+    #[test]
+    fn preserves_existing_content_stream_without_decoding_it() {
+        let pdf = pdf_with_filtered_raw_content();
+        assert!(pdf
+            .windows(b"raw-original-content-sentinel".len())
+            .any(|w| w == b"raw-original-content-sentinel"));
+
+        let out = stamp_images_native(&pdf, &pack(&[Place::png(0, PNG_1X1)])).unwrap();
+        assert!(out
+            .windows(b"raw-original-content-sentinel".len())
+            .any(|w| w == b"raw-original-content-sentinel"));
+
+        let doc = Document::load_mem(&out).unwrap();
+        let page_id = doc.page_iter().next().unwrap();
+        let contents = doc
+            .get_dictionary(page_id)
+            .unwrap()
+            .get(b"Contents")
+            .unwrap()
+            .as_array()
+            .unwrap();
+        assert_eq!(contents.len(), 4, "q wrapper, original, Q wrapper, stamp");
     }
 
     #[test]
@@ -644,7 +813,10 @@ mod tests {
         transparent.opacity = 0.0;
         let out = stamp_images_native(&sample(1), &pack(&[transparent])).unwrap();
         assert_eq!(extgstates(&out).len(), 1);
-        assert_close(number_as_f32(extgstates(&out)[0].get(b"ca").unwrap()).unwrap(), 0.0);
+        assert_close(
+            number_as_f32(extgstates(&out)[0].get(b"ca").unwrap()).unwrap(),
+            0.0,
+        );
 
         let opaque = Place::png(0, PNG_1X1); // opacity 1.0 default
         let out = stamp_images_native(&sample(1), &pack(&[opaque])).unwrap();
@@ -661,8 +833,14 @@ mod tests {
         let imgs = image_xobjects(&out);
         assert_eq!(imgs.len(), 1);
         let s = &imgs[0];
-        assert_eq!(s.dict.get(b"Filter").unwrap().as_name().unwrap(), b"DCTDecode");
-        assert_eq!(s.dict.get(b"ColorSpace").unwrap().as_name().unwrap(), b"DeviceRGB");
+        assert_eq!(
+            s.dict.get(b"Filter").unwrap().as_name().unwrap(),
+            b"DCTDecode"
+        );
+        assert_eq!(
+            s.dict.get(b"ColorSpace").unwrap().as_name().unwrap(),
+            b"DeviceRGB"
+        );
         assert_eq!(s.dict.get(b"Width").unwrap().as_i64().unwrap(), 4);
         assert_eq!(s.dict.get(b"Height").unwrap().as_i64().unwrap(), 4);
         // Byte-for-byte passthrough — never re-encoded.
@@ -675,7 +853,10 @@ mod tests {
         let out = stamp_images_native(&sample(1), &pack(&[Place::jpeg(0, &jpeg)])).unwrap();
         let imgs = image_xobjects(&out);
         assert_eq!(imgs.len(), 1);
-        assert_eq!(imgs[0].dict.get(b"ColorSpace").unwrap().as_name().unwrap(), b"DeviceGray");
+        assert_eq!(
+            imgs[0].dict.get(b"ColorSpace").unwrap().as_name().unwrap(),
+            b"DeviceGray"
+        );
         assert_eq!(imgs[0].content, jpeg);
     }
 
@@ -697,11 +878,28 @@ mod tests {
                 _ => None,
             })
             .expect("an image XObject with an SMask");
-        assert_eq!(main.dict.get(b"ColorSpace").unwrap().as_name().unwrap(), b"DeviceRGB");
-        assert_eq!(main.dict.get(b"Filter").unwrap().as_name().unwrap(), b"FlateDecode");
+        assert_eq!(
+            main.dict.get(b"ColorSpace").unwrap().as_name().unwrap(),
+            b"DeviceRGB"
+        );
+        assert_eq!(
+            main.dict.get(b"Filter").unwrap().as_name().unwrap(),
+            b"FlateDecode"
+        );
         let smask = doc.get_object(smask_id).unwrap().as_stream().unwrap();
-        assert_eq!(smask.dict.get(b"ColorSpace").unwrap().as_name().unwrap(), b"DeviceGray");
-        assert_eq!(smask.dict.get(b"BitsPerComponent").unwrap().as_i64().unwrap(), 8);
+        assert_eq!(
+            smask.dict.get(b"ColorSpace").unwrap().as_name().unwrap(),
+            b"DeviceGray"
+        );
+        assert_eq!(
+            smask
+                .dict
+                .get(b"BitsPerComponent")
+                .unwrap()
+                .as_i64()
+                .unwrap(),
+            8
+        );
     }
 
     #[test]
@@ -711,8 +909,14 @@ mod tests {
         let imgs = image_xobjects(&out);
         assert_eq!(imgs.len(), 1, "no separate SMask stream expected");
         assert!(imgs[0].dict.get(b"SMask").is_err());
-        assert_eq!(imgs[0].dict.get(b"ColorSpace").unwrap().as_name().unwrap(), b"DeviceRGB");
-        assert_eq!(imgs[0].dict.get(b"Filter").unwrap().as_name().unwrap(), b"FlateDecode");
+        assert_eq!(
+            imgs[0].dict.get(b"ColorSpace").unwrap().as_name().unwrap(),
+            b"DeviceRGB"
+        );
+        assert_eq!(
+            imgs[0].dict.get(b"Filter").unwrap().as_name().unwrap(),
+            b"FlateDecode"
+        );
     }
 
     // ---- deduplication --------------------------------------------------------
@@ -761,7 +965,11 @@ mod tests {
             &pack(&[Place::png(0, &png_a), Place::png(0, &png_b)]),
         )
         .unwrap();
-        assert_eq!(image_xobjects(&out).len(), 2, "distinct bytes embed separately");
+        assert_eq!(
+            image_xobjects(&out).len(),
+            2,
+            "distinct bytes embed separately"
+        );
         let text = page_content_text(&out, 0);
         let first = text.find("/UfImg0 Do").expect("first stamp drawn");
         let second = text.find("/UfImg1 Do").expect("second stamp drawn");
@@ -776,8 +984,14 @@ mod tests {
         let twice = stamp_images_native(&once, &pack(&[Place::png(0, &png_b)])).unwrap();
         assert_eq!(image_xobjects(&twice).len(), 2);
         let text = page_content_text(&twice, 0);
-        assert!(text.contains("/UfImg0 Do"), "first run's stamp kept: {text}");
-        assert!(text.contains("/UfImg1 Do"), "second run avoided the used name: {text}");
+        assert!(
+            text.contains("/UfImg0 Do"),
+            "first run's stamp kept: {text}"
+        );
+        assert!(
+            text.contains("/UfImg1 Do"),
+            "second run avoided the used name: {text}"
+        );
         assert_eq!(page_count_native(&twice).unwrap(), 1);
     }
 
@@ -816,7 +1030,8 @@ mod tests {
         let err = stamp_images_native(&sample(2), &pack(&[Place::png(99, PNG_1X1)])).unwrap_err();
         assert_eq!(err, "Page index 99 out of range");
         // A "negative" JS index arrives as a huge u32 after the cast.
-        let err = stamp_images_native(&sample(2), &pack(&[Place::png(u32::MAX, PNG_1X1)])).unwrap_err();
+        let err =
+            stamp_images_native(&sample(2), &pack(&[Place::png(u32::MAX, PNG_1X1)])).unwrap_err();
         assert!(err.contains("out of range"), "{err}");
     }
 
@@ -824,7 +1039,8 @@ mod tests {
     fn rejects_invalid_image_bytes() {
         let err = stamp_images_native(&sample(1), &pack(&[Place::png(0, b"garbage")])).unwrap_err();
         assert!(err.contains("Invalid PNG image"), "{err}");
-        let err = stamp_images_native(&sample(1), &pack(&[Place::jpeg(0, b"garbage")])).unwrap_err();
+        let err =
+            stamp_images_native(&sample(1), &pack(&[Place::jpeg(0, b"garbage")])).unwrap_err();
         assert!(err.contains("Invalid JPEG image"), "{err}");
         let err = stamp_images_native(&sample(1), &pack(&[Place::png(0, b"")])).unwrap_err();
         assert!(err.contains("Invalid PNG image"), "{err}");

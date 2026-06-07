@@ -92,7 +92,8 @@ pub fn images_to_pdf_native(pack: &[u8], opts_json: &str) -> Result<Vec<u8>, Str
             _ => return Err("Unknown image kind in input pack".to_string()),
         };
 
-        let (page_w, page_h, draw) = layout(&page_size, margin, image.width as f32, image.height as f32);
+        let (page_w, page_h, draw) =
+            layout(&page_size, margin, image.width as f32, image.height as f32);
         let content = Content {
             operations: vec![
                 Operation::new("q", vec![]),
@@ -179,12 +180,36 @@ fn embed_png(doc: &mut Document, bytes: &[u8]) -> Result<EmbeddedImage, String> 
             rgb.extend_from_slice(&px.0[..3]);
             alpha.push(px.0[3]);
         }
-        let smask_id = doc.add_object(flate_image_stream(width, height, "DeviceGray", &alpha, None)?);
-        doc.add_object(flate_image_stream(width, height, "DeviceRGB", &rgb, Some(smask_id))?)
+        let smask_id = doc.add_object(flate_image_stream(
+            width,
+            height,
+            "DeviceGray",
+            &alpha,
+            None,
+        )?);
+        doc.add_object(flate_image_stream(
+            width,
+            height,
+            "DeviceRGB",
+            &rgb,
+            Some(smask_id),
+        )?)
     } else if matches!(img.color(), image::ColorType::L8 | image::ColorType::L16) {
-        doc.add_object(flate_image_stream(width, height, "DeviceGray", img.into_luma8().as_raw(), None)?)
+        doc.add_object(flate_image_stream(
+            width,
+            height,
+            "DeviceGray",
+            img.into_luma8().as_raw(),
+            None,
+        )?)
     } else {
-        doc.add_object(flate_image_stream(width, height, "DeviceRGB", img.into_rgb8().as_raw(), None)?)
+        doc.add_object(flate_image_stream(
+            width,
+            height,
+            "DeviceRGB",
+            img.into_rgb8().as_raw(),
+            None,
+        )?)
     };
     Ok(EmbeddedImage { id, width, height })
 }
@@ -203,7 +228,13 @@ fn embed_jpeg(doc: &mut Document, bytes: &[u8]) -> Result<EmbeddedImage, String>
     let id = match jpeg_component_count(bytes) {
         Some(1) => doc.add_object(dct_image_stream(width, height, "DeviceGray", bytes)),
         Some(3) => doc.add_object(dct_image_stream(width, height, "DeviceRGB", bytes)),
-        _ => doc.add_object(flate_image_stream(width, height, "DeviceRGB", img.into_rgb8().as_raw(), None)?),
+        _ => doc.add_object(flate_image_stream(
+            width,
+            height,
+            "DeviceRGB",
+            img.into_rgb8().as_raw(),
+            None,
+        )?),
     };
     Ok(EmbeddedImage { id, width, height })
 }
@@ -309,7 +340,9 @@ mod tests {
     }
 
     fn rgb_png(w: u32, h: u32) -> Vec<u8> {
-        let img = image::RgbImage::from_fn(w, h, |x, y| image::Rgb([(x % 251) as u8, (y % 241) as u8, 9]));
+        let img = image::RgbImage::from_fn(w, h, |x, y| {
+            image::Rgb([(x % 251) as u8, (y % 241) as u8, 9])
+        });
         encode(image::DynamicImage::ImageRgb8(img), image::ImageFormat::Png)
     }
 
@@ -317,22 +350,34 @@ mod tests {
         let img = image::RgbaImage::from_fn(w, h, |x, y| {
             image::Rgba([10, 20, 30, (40 + x * 10 + y) as u8])
         });
-        encode(image::DynamicImage::ImageRgba8(img), image::ImageFormat::Png)
+        encode(
+            image::DynamicImage::ImageRgba8(img),
+            image::ImageFormat::Png,
+        )
     }
 
     fn gray_png(w: u32, h: u32) -> Vec<u8> {
         let img = image::GrayImage::from_fn(w, h, |x, y| image::Luma([(x + y) as u8]));
-        encode(image::DynamicImage::ImageLuma8(img), image::ImageFormat::Png)
+        encode(
+            image::DynamicImage::ImageLuma8(img),
+            image::ImageFormat::Png,
+        )
     }
 
     fn rgb_jpeg(w: u32, h: u32) -> Vec<u8> {
         let img = image::RgbImage::from_pixel(w, h, image::Rgb([200, 100, 50]));
-        encode(image::DynamicImage::ImageRgb8(img), image::ImageFormat::Jpeg)
+        encode(
+            image::DynamicImage::ImageRgb8(img),
+            image::ImageFormat::Jpeg,
+        )
     }
 
     fn gray_jpeg(w: u32, h: u32) -> Vec<u8> {
         let img = image::GrayImage::from_pixel(w, h, image::Luma([130]));
-        encode(image::DynamicImage::ImageLuma8(img), image::ImageFormat::Jpeg)
+        encode(
+            image::DynamicImage::ImageLuma8(img),
+            image::ImageFormat::Jpeg,
+        )
     }
 
     fn pack(images: &[(u8, &[u8])]) -> Vec<u8> {
@@ -357,7 +402,11 @@ mod tests {
         let doc = Document::load_mem(data).unwrap();
         let pages: Vec<_> = doc.page_iter().collect();
         let content = Content::decode(&doc.get_page_content(pages[n]).unwrap()).unwrap();
-        let op = content.operations.iter().find(|op| op.operator == "cm").unwrap();
+        let op = content
+            .operations
+            .iter()
+            .find(|op| op.operator == "cm")
+            .unwrap();
         let mut out = [0f32; 6];
         for (i, operand) in op.operands.iter().enumerate() {
             out[i] = number_as_f32(operand).unwrap();
@@ -385,7 +434,9 @@ mod tests {
     fn inflate(data: &[u8]) -> Vec<u8> {
         use std::io::Read;
         let mut out = Vec::new();
-        flate2::read::ZlibDecoder::new(data).read_to_end(&mut out).unwrap();
+        flate2::read::ZlibDecoder::new(data)
+            .read_to_end(&mut out)
+            .unwrap();
         out
     }
 
@@ -436,7 +487,8 @@ mod tests {
 
     #[test]
     fn a4_sets_a4_page_size() {
-        let out = images_to_pdf_native(&pack(&[(0, &rgb_png(30, 40))]), r#"{"pageSize":"a4"}"#).unwrap();
+        let out =
+            images_to_pdf_native(&pack(&[(0, &rgb_png(30, 40))]), r#"{"pageSize":"a4"}"#).unwrap();
         let mb = media_box(&out, 0);
         assert_close(mb[2], 595.28, "A4 width");
         assert_close(mb[3], 841.89, "A4 height");
@@ -444,8 +496,8 @@ mod tests {
 
     #[test]
     fn letter_sets_letter_page_size() {
-        let out =
-            images_to_pdf_native(&pack(&[(0, &rgb_png(30, 40))]), r#"{"pageSize":"letter"}"#).unwrap();
+        let out = images_to_pdf_native(&pack(&[(0, &rgb_png(30, 40))]), r#"{"pageSize":"letter"}"#)
+            .unwrap();
         let mb = media_box(&out, 0);
         assert_close(mb[2], 612.0, "Letter width");
         assert_close(mb[3], 792.0, "Letter height");
@@ -454,7 +506,8 @@ mod tests {
     #[test]
     fn fixed_mode_centers_small_image_without_upscaling() {
         // scale = min(547.28/300, 793.89/400, 1) = 1 -> drawn at natural size, centered
-        let out = images_to_pdf_native(&pack(&[(0, &rgb_png(300, 400))]), r#"{"pageSize":"a4"}"#).unwrap();
+        let out = images_to_pdf_native(&pack(&[(0, &rgb_png(300, 400))]), r#"{"pageSize":"a4"}"#)
+            .unwrap();
         let cm = cm_matrix(&out, 0);
         assert_close(cm[0], 300.0, "draw width");
         assert_close(cm[3], 400.0, "draw height");
@@ -465,8 +518,8 @@ mod tests {
     #[test]
     fn fixed_mode_downscales_tall_image_to_fit_a4() {
         // scale = min(547.28/2000, 793.89/3000, 1) = 793.89/3000 -> height-bound
-        let out =
-            images_to_pdf_native(&pack(&[(0, &rgb_png(2000, 3000))]), r#"{"pageSize":"a4"}"#).unwrap();
+        let out = images_to_pdf_native(&pack(&[(0, &rgb_png(2000, 3000))]), r#"{"pageSize":"a4"}"#)
+            .unwrap();
         let cm = cm_matrix(&out, 0);
         assert_close(cm[3], 841.89 - 48.0, "draw height fills margin box");
         assert_close(cm[5], 24.0, "y offset equals margin");
@@ -477,8 +530,11 @@ mod tests {
     #[test]
     fn fixed_mode_downscales_wide_image_to_fit_letter() {
         // scale = min(564/3000, 744/2000, 1) = 564/3000 -> width-bound
-        let out =
-            images_to_pdf_native(&pack(&[(1, &rgb_jpeg(3000, 2000))]), r#"{"pageSize":"letter"}"#).unwrap();
+        let out = images_to_pdf_native(
+            &pack(&[(1, &rgb_jpeg(3000, 2000))]),
+            r#"{"pageSize":"letter"}"#,
+        )
+        .unwrap();
         let cm = cm_matrix(&out, 0);
         assert_close(cm[0], 564.0, "draw width fills margin box");
         assert_close(cm[3], 376.0, "draw height scales with aspect");
@@ -496,7 +552,11 @@ mod tests {
         let cm = cm_matrix(&out, 0);
         assert_close(cm[0], 595.28, "draw width fills page width");
         assert_close(cm[4], 0.0, "x offset");
-        assert_close(cm[5], (841.89 - 595.28) / 2.0, "y offset centers vertically");
+        assert_close(
+            cm[5],
+            (841.89 - 595.28) / 2.0,
+            "y offset centers vertically",
+        );
     }
 
     #[test]
@@ -514,12 +574,16 @@ mod tests {
     #[test]
     fn margin_clamps_to_supported_range() {
         let png = rgb_png(300, 400);
-        let over = images_to_pdf_native(&pack(&[(0, &png)]), r#"{"pageSize":"a4","margin":5000}"#).unwrap();
-        let max = images_to_pdf_native(&pack(&[(0, &png)]), r#"{"pageSize":"a4","margin":200}"#).unwrap();
+        let over = images_to_pdf_native(&pack(&[(0, &png)]), r#"{"pageSize":"a4","margin":5000}"#)
+            .unwrap();
+        let max =
+            images_to_pdf_native(&pack(&[(0, &png)]), r#"{"pageSize":"a4","margin":200}"#).unwrap();
         assert_eq!(cm_matrix(&over, 0), cm_matrix(&max, 0));
 
-        let negative = images_to_pdf_native(&pack(&[(0, &png)]), r#"{"pageSize":"a4","margin":-50}"#).unwrap();
-        let zero = images_to_pdf_native(&pack(&[(0, &png)]), r#"{"pageSize":"a4","margin":0}"#).unwrap();
+        let negative =
+            images_to_pdf_native(&pack(&[(0, &png)]), r#"{"pageSize":"a4","margin":-50}"#).unwrap();
+        let zero =
+            images_to_pdf_native(&pack(&[(0, &png)]), r#"{"pageSize":"a4","margin":0}"#).unwrap();
         assert_eq!(cm_matrix(&negative, 0), cm_matrix(&zero, 0));
     }
 
@@ -541,20 +605,37 @@ mod tests {
     #[test]
     fn rejects_empty_image_list() {
         let empty = PackWriter::new(IMAGES_PACK_MAGIC).u32(0).finish();
-        assert_eq!(images_to_pdf_native(&empty, "{}").unwrap_err(), "No images provided");
+        assert_eq!(
+            images_to_pdf_native(&empty, "{}").unwrap_err(),
+            "No images provided"
+        );
     }
 
     #[test]
     fn rejects_wrong_magic() {
-        let bad = PackWriter::new(b"NOPE").u32(1).u8(0).bytes(PNG_1X1).finish();
-        assert_eq!(images_to_pdf_native(&bad, "{}").unwrap_err(), "Invalid input pack");
-        assert_eq!(images_to_pdf_native(b"", "{}").unwrap_err(), "Input pack ended early");
+        let bad = PackWriter::new(b"NOPE")
+            .u32(1)
+            .u8(0)
+            .bytes(PNG_1X1)
+            .finish();
+        assert_eq!(
+            images_to_pdf_native(&bad, "{}").unwrap_err(),
+            "Invalid input pack"
+        );
+        assert_eq!(
+            images_to_pdf_native(b"", "{}").unwrap_err(),
+            "Input pack ended early"
+        );
     }
 
     #[test]
     fn rejects_truncated_pack() {
         // Declares two images but only carries one.
-        let truncated = PackWriter::new(IMAGES_PACK_MAGIC).u32(2).u8(0).bytes(PNG_1X1).finish();
+        let truncated = PackWriter::new(IMAGES_PACK_MAGIC)
+            .u32(2)
+            .u8(0)
+            .bytes(PNG_1X1)
+            .finish();
         assert_eq!(
             images_to_pdf_native(&truncated, "{}").unwrap_err(),
             "Input pack ended early"
@@ -598,7 +679,10 @@ mod tests {
         assert_eq!(name_of(&dict, b"ColorSpace"), "DeviceRGB");
         assert_eq!(dict.get(b"Width").unwrap().as_i64().unwrap(), 8);
         assert_eq!(dict.get(b"Height").unwrap().as_i64().unwrap(), 4);
-        assert_eq!(content, jpeg, "original JPEG bytes must pass through unchanged");
+        assert_eq!(
+            content, jpeg,
+            "original JPEG bytes must pass through unchanged"
+        );
     }
 
     #[test]
@@ -610,6 +694,37 @@ mod tests {
         assert_eq!(name_of(&dict, b"Filter"), "DCTDecode");
         assert_eq!(name_of(&dict, b"ColorSpace"), "DeviceGray");
         assert_eq!(content, jpeg);
+    }
+
+    #[test]
+    fn jpeg_component_parser_handles_marker_edge_cases() {
+        let sof_rgb = [
+            0xFF, 0xD8, 0xFF, 0xC0, 0x00, 0x0B, 0x08, 0x00, 0x01, 0x00, 0x01, 0x03,
+        ];
+        assert_eq!(jpeg_component_count(&sof_rgb), Some(3));
+
+        let fill_bytes_before_sof = [
+            0xFF, 0xD8, 0xFF, 0xFF, 0xFF, 0xC0, 0x00, 0x0B, 0x08, 0x00, 0x01, 0x00, 0x01, 0x04,
+        ];
+        assert_eq!(jpeg_component_count(&fill_bytes_before_sof), Some(4));
+
+        let restart_before_sof = [
+            0xFF, 0xD8, 0xFF, 0xD0, 0xFF, 0xC0, 0x00, 0x0B, 0x08, 0x00, 0x01, 0x00, 0x01, 0x01,
+        ];
+        assert_eq!(jpeg_component_count(&restart_before_sof), Some(1));
+
+        assert_eq!(
+            jpeg_component_count(&[0xFF, 0xD8, 0x00, 0xC0, 0x00, 0x00]),
+            None
+        );
+        assert_eq!(
+            jpeg_component_count(&[0xFF, 0xD8, 0xFF, 0xDA, 0x00, 0x08]),
+            None
+        );
+        assert_eq!(
+            jpeg_component_count(&[0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x02]),
+            None
+        );
     }
 
     #[test]
@@ -662,15 +777,24 @@ mod tests {
     fn output_reparses_and_draws_on_every_page() {
         let images: Vec<Vec<u8>> = (1..=5).map(|i| rgb_png(10 * i, 8 * i)).collect();
         let packed: Vec<(u8, &[u8])> = images.iter().map(|b| (0u8, b.as_slice())).collect();
-        let out = images_to_pdf_native(&pack(&packed), r#"{"pageSize":"letter","margin":12}"#).unwrap();
+        let out =
+            images_to_pdf_native(&pack(&packed), r#"{"pageSize":"letter","margin":12}"#).unwrap();
         assert!(out.starts_with(b"%PDF-"));
         assert_eq!(page_count_native(&out).unwrap(), 5);
 
         let doc = Document::load_mem(&out).unwrap();
         for (n, page_id) in doc.page_iter().enumerate() {
             let content = Content::decode(&doc.get_page_content(page_id).unwrap()).unwrap();
-            let ops: Vec<&str> = content.operations.iter().map(|o| o.operator.as_str()).collect();
-            assert_eq!(ops, ["q", "cm", "Do", "Q"], "page {n} draws exactly one image");
+            let ops: Vec<&str> = content
+                .operations
+                .iter()
+                .map(|o| o.operator.as_str())
+                .collect();
+            assert_eq!(
+                ops,
+                ["q", "cm", "Do", "Q"],
+                "page {n} draws exactly one image"
+            );
         }
     }
 }

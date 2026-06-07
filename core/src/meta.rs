@@ -200,9 +200,7 @@ fn info_dict(doc: &Document) -> Option<&Dictionary> {
 /// The Info object's id, creating an empty Info dictionary if absent/broken.
 fn ensure_info_id(doc: &mut Document) -> ObjectId {
     match doc.trailer.get(b"Info").ok().cloned() {
-        Some(Object::Reference(id))
-            if matches!(doc.get_object(id), Ok(Object::Dictionary(_))) =>
-        {
+        Some(Object::Reference(id)) if matches!(doc.get_object(id), Ok(Object::Dictionary(_))) => {
             id
         }
         // Inline trailer dictionaries are legal but awkward; materialize them.
@@ -363,6 +361,19 @@ mod tests {
         buf
     }
 
+    /// `sample(1)` plus a direct trailer Info dictionary.
+    fn with_inline_info(entries: &[(&str, Object)]) -> Vec<u8> {
+        let mut doc = Document::load_mem(&sample(1)).unwrap();
+        let mut info = Dictionary::new();
+        for (key, value) in entries {
+            info.set(key.as_bytes().to_vec(), value.clone());
+        }
+        doc.trailer.set("Info", Object::Dictionary(info));
+        let mut buf = Vec::new();
+        doc.save_to(&mut buf).unwrap();
+        buf
+    }
+
     /// `sample(pages)` plus a catalog `/Metadata` XMP stream.
     fn with_xmp(pages: usize) -> Vec<u8> {
         let mut doc = Document::load_mem(&sample(pages)).unwrap();
@@ -428,15 +439,39 @@ mod tests {
     fn read_without_info_dict_returns_only_page_count() {
         let v = read_json(&sample(3));
         assert_eq!(v["pageCount"], 3);
-        for key in ["title", "author", "subject", "keywords", "creator", "producer", "creationDate", "modificationDate"] {
+        for key in [
+            "title",
+            "author",
+            "subject",
+            "keywords",
+            "creator",
+            "producer",
+            "creationDate",
+            "modificationDate",
+        ] {
             assert!(v.get(key).is_none(), "{key} should be absent");
         }
     }
 
     #[test]
+    fn read_ignores_malformed_trailer_info_entry() {
+        let mut doc = Document::load_mem(&sample(1)).unwrap();
+        doc.trailer.set("Info", Object::Integer(42));
+        let mut buf = Vec::new();
+        doc.save_to(&mut buf).unwrap();
+
+        let v = read_json(&buf);
+        assert_eq!(v["pageCount"], 1);
+        assert!(v.get("title").is_none());
+    }
+
+    #[test]
     fn read_splits_keywords_on_commas_and_semicolons() {
         let pdf = with_info(1, &[("Keywords", lit("rust, pdf;wasm,  web"))]);
-        assert_eq!(read_json(&pdf)["keywords"], json!(["rust", "pdf", "wasm", "web"]));
+        assert_eq!(
+            read_json(&pdf)["keywords"],
+            json!(["rust", "pdf", "wasm", "web"])
+        );
     }
 
     #[test]
@@ -463,13 +498,50 @@ mod tests {
     }
 
     #[test]
+    fn read_decodes_utf8_bom_strings() {
+        let mut bytes = vec![0xEF, 0xBB, 0xBF];
+        bytes.extend_from_slice("UTF-8 title".as_bytes());
+        let pdf = with_info(
+            1,
+            &[("Title", Object::String(bytes, StringFormat::Literal))],
+        );
+        assert_eq!(read_json(&pdf)["title"], "UTF-8 title");
+    }
+
+    #[test]
+    fn read_decodes_full_pdfdoc_encoding_table() {
+        let bytes: Vec<u8> = (0x18..=0x1F).chain(0x80..=0xA0).collect();
+        let expected: String = [
+            '\u{02D8}', '\u{02C7}', '\u{02C6}', '\u{02D9}', '\u{02DD}', '\u{02DB}', '\u{02DA}',
+            '\u{02DC}', '\u{2022}', '\u{2020}', '\u{2021}', '\u{2026}', '\u{2014}', '\u{2013}',
+            '\u{0192}', '\u{2044}', '\u{2039}', '\u{203A}', '\u{2212}', '\u{2030}', '\u{201E}',
+            '\u{201C}', '\u{201D}', '\u{2018}', '\u{2019}', '\u{201A}', '\u{2122}', '\u{FB01}',
+            '\u{FB02}', '\u{0141}', '\u{0152}', '\u{0160}', '\u{0178}', '\u{017D}', '\u{0131}',
+            '\u{0142}', '\u{0153}', '\u{0161}', '\u{017E}', '\u{009F}', '\u{20AC}',
+        ]
+        .into_iter()
+        .collect();
+
+        assert_eq!(decode_pdf_string(&bytes), expected);
+    }
+
+    #[test]
     fn read_decodes_pdfdoc_encoding_high_bytes() {
         // é (Latin-1 range), en dash (0x85), euro (0xA0) in PDFDocEncoding.
         let pdf = with_info(
             1,
-            &[("Title", Object::String(vec![b'a', 0xE9, 0x85, 0xA0], StringFormat::Literal))],
+            &[(
+                "Title",
+                Object::String(vec![b'a', 0xE9, 0x85, 0xA0], StringFormat::Literal),
+            )],
         );
         assert_eq!(read_json(&pdf)["title"], "aé\u{2013}\u{20AC}");
+    }
+
+    #[test]
+    fn read_handles_inline_trailer_info_dictionary() {
+        let pdf = with_inline_info(&[("Title", lit("Inline Title"))]);
+        assert_eq!(read_json(&pdf)["title"], "Inline Title");
     }
 
     #[test]
@@ -492,6 +564,7 @@ mod tests {
         let v = read_json(&pdf);
         assert!(v.get("title").is_none());
         assert_eq!(v["author"], "Ann");
+        assert!(info_entry_bytes(&pdf, b"Title").is_none());
     }
 
     #[test]
@@ -532,8 +605,23 @@ mod tests {
     }
 
     #[test]
+    fn set_materializes_inline_trailer_info_dictionary() {
+        let pdf = with_inline_info(&[("Title", lit("Keep"))]);
+        let out = set_metadata_native(&pdf, r#"{"author":"Add"}"#).unwrap();
+        let doc = Document::load_mem(&out).unwrap();
+        assert!(doc.trailer.get(b"Info").unwrap().as_reference().is_ok());
+
+        let v = read_json(&out);
+        assert_eq!(v["title"], "Keep");
+        assert_eq!(v["author"], "Add");
+    }
+
+    #[test]
     fn set_only_touches_provided_fields() {
-        let pdf = with_info(1, &[("Author", lit("Keep Me")), ("Subject", lit("Old Subject"))]);
+        let pdf = with_info(
+            1,
+            &[("Author", lit("Keep Me")), ("Subject", lit("Old Subject"))],
+        );
         let out = set_metadata_native(&pdf, r#"{"title":"New Title"}"#).unwrap();
         let v = read_json(&out);
         assert_eq!(v["title"], "New Title");
@@ -553,10 +641,17 @@ mod tests {
 
     #[test]
     fn set_keywords_joined_with_comma_space() {
-        let out = set_metadata_native(&sample(1), r#"{"keywords":["alpha","beta","gamma"]}"#).unwrap();
+        let out =
+            set_metadata_native(&sample(1), r#"{"keywords":["alpha","beta","gamma"]}"#).unwrap();
         // Stored as ONE comma-separated string so the delimiter round-trips.
-        assert_eq!(info_entry_bytes(&out, b"Keywords").unwrap(), b"alpha, beta, gamma");
-        assert_eq!(read_json(&out)["keywords"], json!(["alpha", "beta", "gamma"]));
+        assert_eq!(
+            info_entry_bytes(&out, b"Keywords").unwrap(),
+            b"alpha, beta, gamma"
+        );
+        assert_eq!(
+            read_json(&out)["keywords"],
+            json!(["alpha", "beta", "gamma"])
+        );
     }
 
     #[test]
@@ -571,14 +666,18 @@ mod tests {
         let pdf = with_info(1, &[("Keywords", lit("old, stuff"))]);
         for opts in [r#"{"keywords":[]}"#, r#"{"keywords":""}"#] {
             let out = set_metadata_native(&pdf, opts).unwrap();
-            assert!(info_entry_bytes(&out, b"Keywords").is_none(), "opts: {opts}");
+            assert!(
+                info_entry_bytes(&out, b"Keywords").is_none(),
+                "opts: {opts}"
+            );
             assert!(read_json(&out).get("keywords").is_none(), "opts: {opts}");
         }
     }
 
     #[test]
     fn set_unicode_writes_utf16be_with_bom() {
-        let out = set_metadata_native(&sample(1), r#"{"title":"Привіт","author":"ASCII Only"}"#).unwrap();
+        let out =
+            set_metadata_native(&sample(1), r#"{"title":"Привіт","author":"ASCII Only"}"#).unwrap();
         let title_bytes = info_entry_bytes(&out, b"Title").unwrap();
         assert_eq!(&title_bytes[..2], &[0xFE, 0xFF], "UTF-16BE BOM expected");
         let author_bytes = info_entry_bytes(&out, b"Author").unwrap();
@@ -599,8 +698,12 @@ mod tests {
 
     #[test]
     fn set_dates_stored_verbatim_and_clearable() {
-        let out = set_metadata_native(&sample(1), r#"{"creationDate":"D:20231231235959Z"}"#).unwrap();
-        assert_eq!(info_entry_bytes(&out, b"CreationDate").unwrap(), b"D:20231231235959Z");
+        let out =
+            set_metadata_native(&sample(1), r#"{"creationDate":"D:20231231235959Z"}"#).unwrap();
+        assert_eq!(
+            info_entry_bytes(&out, b"CreationDate").unwrap(),
+            b"D:20231231235959Z"
+        );
         let cleared = set_metadata_native(&out, r#"{"creationDate":""}"#).unwrap();
         assert!(read_json(&cleared).get("creationDate").is_none());
     }
@@ -635,9 +738,16 @@ mod tests {
         let out = strip_metadata_native(&set).unwrap();
         let v = read_json(&out);
         assert_eq!(v["pageCount"], 1);
-        assert_eq!(v.as_object().unwrap().len(), 1, "only pageCount should remain");
+        assert_eq!(
+            v.as_object().unwrap().len(),
+            1,
+            "only pageCount should remain"
+        );
         let doc = Document::load_mem(&out).unwrap();
-        assert!(doc.trailer.get(b"Info").is_err(), "trailer /Info should be gone");
+        assert!(
+            doc.trailer.get(b"Info").is_err(),
+            "trailer /Info should be gone"
+        );
     }
 
     #[test]
@@ -652,7 +762,13 @@ mod tests {
         assert!(doc.catalog().unwrap().get(b"Metadata").is_err());
         let has_xmp_stream = doc.objects.values().any(|obj| {
             obj.as_stream()
-                .map(|s| s.dict.get(b"Type").and_then(Object::as_name).map(|n| n == b"Metadata").unwrap_or(false))
+                .map(|s| {
+                    s.dict
+                        .get(b"Type")
+                        .and_then(Object::as_name)
+                        .map(|n| n == b"Metadata")
+                        .unwrap_or(false)
+                })
                 .unwrap_or(false)
         });
         assert!(!has_xmp_stream, "XMP stream object should be removed");

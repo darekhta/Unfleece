@@ -33,7 +33,9 @@
 
 #[cfg(test)]
 mod tests {
-    use crate::pages::{page_count_native, rotate_all_native, rotate_pages_native, select_pages_native};
+    use crate::pages::{
+        page_count_native, rotate_all_native, rotate_pages_native, select_pages_native,
+    };
     use crate::util::effective_media_box;
     use crate::util::fixtures::{page_content_text, page_width, sample, sample_with_text};
     use lopdf::content::Content;
@@ -126,14 +128,20 @@ mod tests {
     fn extract_contract_rejects_empty_selection() {
         // organize.ts throws 'No pages selected' before calling Rust; the Rust
         // backstop must carry the same friendly message.
-        let err = select_pages_native(&sample(3), &[]).unwrap_err().to_string();
+        let err = select_pages_native(&sample(3), &[])
+            .unwrap_err()
+            .to_string();
         assert!(err.contains("No pages selected"), "got: {err}");
     }
 
     #[test]
     fn extract_contract_rejects_out_of_range_index() {
-        let err = select_pages_native(&sample(3), &[5]).unwrap_err().to_string();
-        assert!(err.contains("could not be found"), "got: {err}");
+        let err = select_pages_native(&sample(3), &[5])
+            .unwrap_err()
+            .to_string();
+        let lower = err.to_ascii_lowercase();
+        assert!(lower.contains("page number"), "got: {err}");
+        assert!(lower.contains("not found"), "got: {err}");
     }
 
     #[test]
@@ -154,7 +162,10 @@ mod tests {
         // The page must own the box after extraction (survives re-parenting)…
         assert!(doc.get_dictionary(pages[0]).unwrap().has(b"MediaBox"));
         // …and it must still resolve to the inherited value.
-        assert_eq!(effective_media_box(&doc, pages[0]).unwrap(), [0.0, 0.0, 612.0, 792.0]);
+        assert_eq!(
+            effective_media_box(&doc, pages[0]).unwrap(),
+            [0.0, 0.0, 612.0, 792.0]
+        );
     }
 
     // -- removePages contract -------------------------------------------------
@@ -212,7 +223,10 @@ mod tests {
         let doc = Document::load_mem(&out).unwrap();
         let pages: Vec<_> = doc.page_iter().collect();
         assert_eq!(pages.len(), 3);
-        assert_eq!(pages[0], pages[2], "duplicated index re-references one object");
+        assert_eq!(
+            pages[0], pages[2],
+            "duplicated index re-references one object"
+        );
     }
 
     // -- splitToPages / splitByRanges contracts --------------------------------
@@ -325,9 +339,13 @@ mod tests {
     #[test]
     fn rotate_pages_rejects_out_of_range_index() {
         // organize.ts throws 'Page index 5 out of range'; Rust's message is
-        // lopdf's 1-based 'Page number 6 could not be found'.
-        let err = rotate_pages_native(&sample(2), &[5], 90).unwrap_err().to_string();
-        assert!(err.contains("could not be found"), "got: {err}");
+        // lopdf's 1-based page-number error, whose wording changed in 0.35.
+        let err = rotate_pages_native(&sample(2), &[5], 90)
+            .unwrap_err()
+            .to_string();
+        let lower = err.to_ascii_lowercase();
+        assert!(lower.contains("page number"), "got: {err}");
+        assert!(lower.contains("not found"), "got: {err}");
     }
 
     #[test]

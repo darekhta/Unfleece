@@ -273,7 +273,12 @@ fn delete_info_dict(doc: &mut Document) -> usize {
 /// Remove the script/attachment name trees from the catalog `/Names`
 /// dictionary; if that empties it, remove the `/Names` entry too.
 fn clean_name_tree(doc: &mut Document) -> Result<usize, String> {
-    let names_value = match doc.catalog().ok().and_then(|c| c.get(b"Names").ok()).cloned() {
+    let names_value = match doc
+        .catalog()
+        .ok()
+        .and_then(|c| c.get(b"Names").ok())
+        .cloned()
+    {
         Some(value) => value,
         None => return Ok(0),
     };
@@ -515,7 +520,11 @@ mod tests {
         let acro_form = doc.add_object(dictionary! { "Fields" => Object::Array(vec![]) });
 
         let catalog_id = doc.trailer.get(b"Root").unwrap().as_reference().unwrap();
-        let catalog = doc.get_object_mut(catalog_id).unwrap().as_dict_mut().unwrap();
+        let catalog = doc
+            .get_object_mut(catalog_id)
+            .unwrap()
+            .as_dict_mut()
+            .unwrap();
         catalog.set("Names", names_id);
         catalog.set("OpenAction", js_action);
         catalog.set("AA", dictionary! { "WC" => js_action });
@@ -571,20 +580,37 @@ mod tests {
         assert!(load(&out).trailer.get(b"Info").is_err());
     }
 
+    #[test]
+    fn removes_malformed_info_trailer_entry() {
+        let mut doc = load(&sample(1));
+        doc.trailer.set("Info", Object::Integer(42));
+
+        let out = sanitize_native(&bytes_of(doc), "{}").unwrap();
+        assert!(load(&out).trailer.get(b"Info").is_err());
+    }
+
     // ----- catalog ------------------------------------------------------------
 
     #[test]
     fn removes_all_eight_catalog_keys() {
         let mut doc = load(&sample(1));
         let catalog_id = doc.trailer.get(b"Root").unwrap().as_reference().unwrap();
-        let catalog = doc.get_object_mut(catalog_id).unwrap().as_dict_mut().unwrap();
+        let catalog = doc
+            .get_object_mut(catalog_id)
+            .unwrap()
+            .as_dict_mut()
+            .unwrap();
         for key in CATALOG_KEYS {
             catalog.set(key.to_vec(), dictionary! {});
         }
         let out = sanitize_native(&bytes_of(doc), "{}").unwrap();
         let catalog = catalog_of(&out);
         for key in CATALOG_KEYS {
-            assert!(!catalog.has(key), "catalog still has {}", String::from_utf8_lossy(key));
+            assert!(
+                !catalog.has(key),
+                "catalog still has {}",
+                String::from_utf8_lossy(key)
+            );
         }
         assert!(catalog.has(b"Pages")); // untouched structure survives
     }
@@ -612,13 +638,51 @@ mod tests {
             "Dests" => dictionary! {},
         });
         let catalog_id = doc.trailer.get(b"Root").unwrap().as_reference().unwrap();
-        let catalog = doc.get_object_mut(catalog_id).unwrap().as_dict_mut().unwrap();
+        let catalog = doc
+            .get_object_mut(catalog_id)
+            .unwrap()
+            .as_dict_mut()
+            .unwrap();
         catalog.set("Names", names_id);
 
         let out = sanitize_native(&bytes_of(doc), "{}").unwrap();
         let doc = load(&out);
-        let names_id = doc.catalog().unwrap().get(b"Names").unwrap().as_reference().unwrap();
+        let names_id = doc
+            .catalog()
+            .unwrap()
+            .get(b"Names")
+            .unwrap()
+            .as_reference()
+            .unwrap();
         let names = doc.get_dictionary(names_id).unwrap();
+        assert!(names.has(b"Dests"));
+        assert!(!names.has(b"JavaScript"));
+    }
+
+    #[test]
+    fn cleans_direct_name_tree_dictionary() {
+        let mut doc = load(&sample(1));
+        let catalog_id = doc.trailer.get(b"Root").unwrap().as_reference().unwrap();
+        let catalog = doc
+            .get_object_mut(catalog_id)
+            .unwrap()
+            .as_dict_mut()
+            .unwrap();
+        catalog.set(
+            "Names",
+            dictionary! {
+                "JavaScript" => dictionary! {},
+                "Dests" => dictionary! {},
+            },
+        );
+
+        let out = sanitize_native(&bytes_of(doc), "{}").unwrap();
+        let names = catalog_of(&out)
+            .get(b"Names")
+            .unwrap()
+            .as_dict()
+            .unwrap()
+            .clone();
         assert!(names.has(b"Dests"));
         assert!(!names.has(b"JavaScript"));
     }
@@ -635,7 +699,13 @@ mod tests {
     fn keeps_acroform_when_remove_forms_false() {
         let out = sanitize_native(&risky_pdf(), r#"{"removeForms": false}"#).unwrap();
         let doc = load(&out);
-        let form_id = doc.catalog().unwrap().get(b"AcroForm").unwrap().as_reference().unwrap();
+        let form_id = doc
+            .catalog()
+            .unwrap()
+            .get(b"AcroForm")
+            .unwrap()
+            .as_reference()
+            .unwrap();
         assert!(doc.get_dictionary(form_id).unwrap().has(b"Fields"));
     }
 
@@ -661,10 +731,12 @@ mod tests {
             .unwrap()
             .clone();
         assert_eq!(annots.len(), 1);
-        let annot = doc.get_dictionary(annots[0].as_reference().unwrap()).unwrap();
+        let annot = doc
+            .get_dictionary(annots[0].as_reference().unwrap())
+            .unwrap();
         assert!(has_name(annot, b"Subtype", b"Link")); // annotation survives
         assert!(!annot.has(b"A")); // its action does not
-        // ...and the Launch action object is gone from the document.
+                                   // ...and the Launch action object is gone from the document.
         assert!(!any_dict_matches(&out, |d| has_name(d, b"S", b"Launch")));
     }
 
@@ -682,7 +754,12 @@ mod tests {
             })],
         );
         let out = sanitize_native(&bytes_of(doc), r#"{"removeAnnotations": false}"#).unwrap();
-        let annots = first_page_dict(&out).get(b"Annots").unwrap().as_array().unwrap().clone();
+        let annots = first_page_dict(&out)
+            .get(b"Annots")
+            .unwrap()
+            .as_array()
+            .unwrap()
+            .clone();
         assert_eq!(annots.len(), 1);
         let annot = annots[0].as_dict().unwrap();
         assert!(has_name(annot, b"Subtype", b"Text"));
@@ -709,18 +786,58 @@ mod tests {
         let out = sanitize_native(&build(), r#"{"removeAnnotations": false}"#).unwrap();
         let doc = load(&out);
         let page = doc.page_iter().next().unwrap();
-        let annots_obj = doc.get_dictionary(page).unwrap().get(b"Annots").unwrap().clone();
+        let annots_obj = doc
+            .get_dictionary(page)
+            .unwrap()
+            .get(b"Annots")
+            .unwrap()
+            .clone();
         let array = match annots_obj {
             Object::Reference(id) => doc.get_object(id).unwrap().as_array().unwrap().clone(),
             Object::Array(a) => a,
             other => panic!("unexpected Annots value: {other:?}"),
         };
-        let annot = doc.get_dictionary(array[0].as_reference().unwrap()).unwrap();
+        let annot = doc
+            .get_dictionary(array[0].as_reference().unwrap())
+            .unwrap();
         assert!(!annot.has(b"A"));
 
         // Removed: the key disappears from the page.
         let out = sanitize_native(&build(), "{}").unwrap();
         assert!(!first_page_dict(&out).has(b"Annots"));
+    }
+
+    #[test]
+    fn cleans_annots_behind_reference_chain_when_kept() {
+        let mut doc = load(&sample(1));
+        let annot = doc.add_object(dictionary! {
+            "Subtype" => "Link",
+            "A" => dictionary! { "S" => "URI", "URI" => Object::string_literal("https://x") },
+        });
+        let array_id = doc.add_object(vec![Object::Reference(annot)]);
+        let alias_id = doc.add_object(Object::Reference(array_id));
+        let page = doc.page_iter().next().unwrap();
+        doc.get_object_mut(page)
+            .unwrap()
+            .as_dict_mut()
+            .unwrap()
+            .set("Annots", alias_id);
+
+        let out = sanitize_native(&bytes_of(doc), r#"{"removeAnnotations": false}"#).unwrap();
+        let doc = load(&out);
+        let page = doc.page_iter().next().unwrap();
+        let annots_id = doc
+            .get_dictionary(page)
+            .unwrap()
+            .get(b"Annots")
+            .unwrap()
+            .as_reference()
+            .unwrap();
+        let annots = doc.get_object(annots_id).unwrap().as_array().unwrap();
+        let annot = doc
+            .get_dictionary(annots[0].as_reference().unwrap())
+            .unwrap();
+        assert!(!annot.has(b"A"));
     }
 
     // ----- page keys ------------------------------------------------------------
@@ -736,7 +853,11 @@ mod tests {
         let out = sanitize_native(&bytes_of(doc), "{}").unwrap();
         let page = first_page_dict(&out);
         for key in PAGE_KEYS {
-            assert!(!page.has(key), "page still has {}", String::from_utf8_lossy(key));
+            assert!(
+                !page.has(key),
+                "page still has {}",
+                String::from_utf8_lossy(key)
+            );
         }
         assert!(page.has(b"MediaBox"));
     }
@@ -746,10 +867,22 @@ mod tests {
     #[test]
     fn purges_dangerous_objects_from_output() {
         let out = sanitize_native(&risky_pdf(), "{}").unwrap();
-        assert!(!any_dict_matches(&out, |d| has_name(d, b"S", b"JavaScript")));
+        assert!(!any_dict_matches(&out, |d| has_name(
+            d,
+            b"S",
+            b"JavaScript"
+        )));
         assert!(!any_dict_matches(&out, |d| has_name(d, b"S", b"Launch")));
-        assert!(!any_dict_matches(&out, |d| has_name(d, b"Type", b"EmbeddedFile")));
-        assert!(!any_dict_matches(&out, |d| has_name(d, b"Type", b"Filespec")));
+        assert!(!any_dict_matches(&out, |d| has_name(
+            d,
+            b"Type",
+            b"EmbeddedFile"
+        )));
+        assert!(!any_dict_matches(&out, |d| has_name(
+            d,
+            b"Type",
+            b"Filespec"
+        )));
     }
 
     #[test]
@@ -760,12 +893,22 @@ mod tests {
             "F" => Object::string_literal("evil.txt"),
         });
         let catalog_id = doc.trailer.get(b"Root").unwrap().as_reference().unwrap();
-        let catalog = doc.get_object_mut(catalog_id).unwrap().as_dict_mut().unwrap();
+        let catalog = doc
+            .get_object_mut(catalog_id)
+            .unwrap()
+            .as_dict_mut()
+            .unwrap();
         catalog.set("Unfleece", filespec); // custom key: not stripped by sanitize
 
         let out = sanitize_native(&bytes_of(doc), "{}").unwrap();
         let doc = load(&out);
-        let id = doc.catalog().unwrap().get(b"Unfleece").unwrap().as_reference().unwrap();
+        let id = doc
+            .catalog()
+            .unwrap()
+            .get(b"Unfleece")
+            .unwrap()
+            .as_reference()
+            .unwrap();
         assert!(matches!(doc.get_object(id).unwrap(), Object::Null));
     }
 
@@ -804,20 +947,33 @@ mod tests {
             b"app.alert(4)".to_vec(),
         ));
         let catalog_id = doc.trailer.get(b"Root").unwrap().as_reference().unwrap();
-        let catalog = doc.get_object_mut(catalog_id).unwrap().as_dict_mut().unwrap();
+        let catalog = doc
+            .get_object_mut(catalog_id)
+            .unwrap()
+            .as_dict_mut()
+            .unwrap();
         catalog.set("Unfleece", js_stream);
 
         let out = sanitize_native(&bytes_of(doc), "{}").unwrap();
-        assert!(!any_dict_matches(&out, |d| has_name(d, b"Subtype", b"JavaScript")));
-        assert!(!out.windows(b"app.alert(4)".len()).any(|w| w == b"app.alert(4)"));
+        assert!(!any_dict_matches(&out, |d| has_name(
+            d,
+            b"Subtype",
+            b"JavaScript"
+        )));
+        assert!(!out
+            .windows(b"app.alert(4)".len())
+            .any(|w| w == b"app.alert(4)"));
     }
 
     // ----- options parsing --------------------------------------------------------
 
     #[test]
     fn accepts_snake_case_aliases_and_unknown_fields() {
-        let out =
-            sanitize_native(&risky_pdf(), r#"{"remove_forms": false, "future_option": 1}"#).unwrap();
+        let out = sanitize_native(
+            &risky_pdf(),
+            r#"{"remove_forms": false, "future_option": 1}"#,
+        )
+        .unwrap();
         assert!(catalog_of(&out).has(b"AcroForm")); // snake_case alias honored
         assert!(!first_page_dict(&out).has(b"Annots")); // unset option defaulted to true
     }

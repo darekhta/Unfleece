@@ -72,7 +72,8 @@ impl<'a> PackReader<'a> {
 
     /// Read a u32 length followed by that many bytes of UTF-8.
     pub fn read_str(&mut self) -> Result<&'a str, String> {
-        std::str::from_utf8(self.read_bytes()?).map_err(|_| "Invalid UTF-8 in input pack".to_string())
+        std::str::from_utf8(self.read_bytes()?)
+            .map_err(|_| "Invalid UTF-8 in input pack".to_string())
     }
 
     pub fn expect_done(&self) -> Result<(), String> {
@@ -92,7 +93,9 @@ pub struct PackWriter {
 
 impl PackWriter {
     pub fn new(magic: &[u8]) -> Self {
-        Self { out: magic.to_vec() }
+        Self {
+            out: magic.to_vec(),
+        }
     }
 
     pub fn u8(mut self, v: u8) -> Self {

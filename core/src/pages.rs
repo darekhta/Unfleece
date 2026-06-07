@@ -15,7 +15,11 @@ pub fn rotate_all_native(data: &[u8], degrees: i64) -> Result<Vec<u8>, LopdfErro
 }
 
 /// Rotate only the given 0-based pages by `degrees` (relative).
-pub fn rotate_pages_native(data: &[u8], indices: &[u32], degrees: i64) -> Result<Vec<u8>, LopdfError> {
+pub fn rotate_pages_native(
+    data: &[u8],
+    indices: &[u32],
+    degrees: i64,
+) -> Result<Vec<u8>, LopdfError> {
     let mut doc = Document::load_mem(data)?;
     let pages: Vec<_> = doc.page_iter().collect();
     let mut ids = Vec::with_capacity(indices.len());
@@ -36,7 +40,11 @@ fn rotate_ids(doc: &mut Document, ids: &[lopdf::ObjectId], degrees: i64) -> Resu
     for &id in ids {
         if let Ok(obj) = doc.get_object_mut(id) {
             if let Ok(dict) = obj.as_dict_mut() {
-                let current = dict.get(b"Rotate").ok().and_then(|o| o.as_i64().ok()).unwrap_or(0);
+                let current = dict
+                    .get(b"Rotate")
+                    .ok()
+                    .and_then(|o| o.as_i64().ok())
+                    .unwrap_or(0);
                 let next = (((current + degrees) % 360) + 360) % 360;
                 dict.set("Rotate", next);
             }
@@ -80,7 +88,9 @@ pub fn select_pages_native(data: &[u8], indices: &[u32]) -> Result<Vec<u8>, Lopd
             .get(index as usize)
             .ok_or(LopdfError::PageNumberNotFound(index + 1))?;
         materialize_inherited_page_attrs(&mut doc, page_id)?;
-        doc.get_object_mut(page_id)?.as_dict_mut()?.set("Parent", pages_id);
+        doc.get_object_mut(page_id)?
+            .as_dict_mut()?
+            .set("Parent", pages_id);
         kids.push(Object::Reference(page_id));
     }
 
