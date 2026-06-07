@@ -54,7 +54,7 @@ See [`docs/01-architecture.md`](docs/01-architecture.md) for the full picture.
 | Interactive tools | Svelte islands, hydrated on demand |
 | Compute | Web Workers (Comlink) + lazy Rust → WebAssembly where it is mature |
 | Offline | Installable PWA shell with service-worker caching for static tool pages |
-| PDF engine today | `@cantoo/pdf-lib`, `pdf.js`, Canvas, `lopdf`/`krilla` WASM, and Ghostscript-WASM |
+| PDF engine | **Rust→WASM `unfleece-core`** (merge, split, rotate, crop, metadata, sanitize, watermark, page numbers, image stamping, images→PDF, N-up, booklet, PDF/A, optimize) · `pdf.js` for rendering · Ghostscript-WASM for compression · `@cantoo/pdf-lib` only for forms + protect/unlock |
 | Engine direction | More owned Rust/WASM operations; evaluate wrapped engines only where they beat browser primitives |
 | Styling | Hand-authored CSS design system, no third-party font requests |
 
@@ -97,8 +97,8 @@ See [`docs/06-roadmap.md`](docs/06-roadmap.md).
 | | |
 |---|---|
 | Tools | 38 (organize, convert, edit, optimize, forms, security) |
-| Tests | 79 unit (vitest) · 6 Rust (cargo) · 47 E2E (Playwright/Chromium) |
-| Engines | TypeScript (pdf-lib/pdf.js) + Rust→WASM (lopdf/krilla) + Ghostscript-WASM |
+| Tests | 165 unit (vitest, through real WASM) · 230 Rust (cargo) · 47 E2E (Playwright/Chromium) |
+| Engines | **Rust→WASM core (lopdf/krilla) — all object-graph ops** · pdf.js (render) · Ghostscript-WASM (compress) · pdf-lib (forms/protect only) |
 | Cost | $0/month hosting · ~$10/yr domain |
 
 ## Getting started

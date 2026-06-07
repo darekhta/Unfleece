@@ -12,20 +12,19 @@ describe('annotate', () => {
     expect(await pageCount(out)).toBe(3);
   });
 
-  it('addPageNumbers reports per-page progress', async () => {
+  it('addPageNumbers reports Rust core progress', async () => {
     const pdf = await makeSamplePdf(3);
     const events: string[] = [];
     await addPageNumbers(pdf, { format: '{n}' }, (progress) => events.push(progress.label));
 
-    expect(events).toContain('Adding page number 1 of 3…');
-    expect(events).toContain('Adding page number 3 of 3…');
+    expect(events[0]).toBe('Adding page numbers in Rust core…');
     expect(events.at(-1)).toBe('Saving numbered PDF…');
   });
 
   it('addTextWatermark requires text', async () => {
     const pdf = await makeSamplePdf(1);
     // @ts-expect-error intentionally missing text
-    await expect(addTextWatermark(pdf, {})).rejects.toThrow();
+    await expect(addTextWatermark(pdf, {})).rejects.toThrow('Watermark text is required');
   });
 
   it('addTextWatermark produces a valid PDF', async () => {
@@ -35,13 +34,12 @@ describe('annotate', () => {
     expect(await pageCount(out)).toBe(2);
   });
 
-  it('addTextWatermark reports per-page progress', async () => {
+  it('addTextWatermark reports Rust core progress', async () => {
     const pdf = await makeSamplePdf(2);
     const events: string[] = [];
     await addTextWatermark(pdf, { text: 'CONFIDENTIAL' }, (progress) => events.push(progress.label));
 
-    expect(events).toContain('Watermarking page 1 of 2…');
-    expect(events).toContain('Watermarking page 2 of 2…');
+    expect(events[0]).toBe('Adding watermark in Rust core…');
     expect(events.at(-1)).toBe('Saving watermarked PDF…');
   });
 });
@@ -56,13 +54,12 @@ describe('cropPdf', () => {
     expect(box.height).toBeCloseTo(340, 1);
   });
 
-  it('reports per-page crop progress', async () => {
+  it('reports Rust core crop progress', async () => {
     const pdf = await makeSamplePdf(2, [300, 400]);
     const events: string[] = [];
     await cropPdf(pdf, { left: 10 }, (progress) => events.push(progress.label));
 
-    expect(events).toContain('Cropping page 1 of 2…');
-    expect(events).toContain('Cropping page 2 of 2…');
+    expect(events[0]).toBe('Cropping pages in Rust core…');
     expect(events.at(-1)).toBe('Saving cropped PDF…');
   });
 
