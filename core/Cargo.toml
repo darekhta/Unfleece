@@ -11,7 +11,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 krilla = { version = "0.8.2", default-features = false, features = ["raster-images"] }
-lopdf = { version = "0.34", default-features = false, features = ["nom_parser"] }
+lopdf = { version = "0.35", default-features = false, features = ["nom_parser"] }
 # wasm-safe (pure Rust) building blocks for the owned engine modules
 flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
 image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
