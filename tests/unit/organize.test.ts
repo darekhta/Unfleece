@@ -21,7 +21,7 @@ describe('mergePdfs', () => {
     expect(await pageCount(out)).toBe(5);
   });
 
-  it('reports merge progress per input file', async () => {
+  it('reports merge start/finish progress', async () => {
     const onProgress = vi.fn();
     const a = await makeSamplePdf(1);
     const b = await makeSamplePdf(1);
@@ -91,7 +91,7 @@ describe('organize', () => {
     expect(doc.getPage(1).getRotation().angle).toBe(90);
   });
 
-  it('reports rotate progress per targeted page', async () => {
+  it('reports rotate start/finish progress', async () => {
     const pdf = await makeSamplePdf(2);
     const onProgress = vi.fn();
 
@@ -130,13 +130,13 @@ describe('organize', () => {
     expect(doc.getPage(0).getWidth()).toBeGreaterThan(doc.getPage(0).getHeight());
   });
 
-  it('bookletPdf reports progress per spread', async () => {
+  it('bookletPdf reports start/finish progress with the spread count', async () => {
     const pdf = await makeSamplePdf(4);
     const onProgress = vi.fn();
 
     await bookletPdf(pdf, {}, onProgress);
 
-    expect(onProgress).toHaveBeenCalledWith(expect.objectContaining({ label: 'Creating booklet spread 1 of 2…', current: 0, total: 2 }));
+    expect(onProgress).toHaveBeenCalledWith(expect.objectContaining({ label: 'Creating 2 booklet spreads in Rust core…', current: 0, total: 2 }));
     expect(onProgress).toHaveBeenCalledWith(expect.objectContaining({ current: 2, total: 2 }));
   });
 });

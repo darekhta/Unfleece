@@ -21,7 +21,7 @@
     "test:rust": "cd core && cargo test --locked",
     "test:all": "npm run test:unit && npm run test:rust && npm run test:e2e",
     "verify": "npm audit --audit-level=moderate && npm run check && npm run build && npm run test:unit && npm run test:rust && npm run test:e2e",
-    "build:wasm": "cd core && wasm-pack build --target web --out-dir ../src/lib/wasm/pkg --out-name unfleece_core --release",
+    "build:wasm": "cd core && wasm-pack build --target web --out-dir ../src/lib/wasm/pkg --out-name unfleece_core --release && rm -f ../src/lib/wasm/pkg/.gitignore",
     "deploy": "npm run build && wrangler pages deploy dist --project-name unfleece --branch main --commit-dirty=true"
   },
   "dependencies": {

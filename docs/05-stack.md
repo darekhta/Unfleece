@@ -21,7 +21,8 @@ See `docs/03-engine.md` for the full build-vs-wrap reasoning.
 
 | Job | Engine | License | Load |
 |---|---|---|---|
-| Object ops (split/extract/remove/reorder/rotate/optimize) | `lopdf` in `unfleece-core` where it wins; `@cantoo/pdf-lib` fallback/merge/forms | MIT / MIT-Apache | lazy worker |
+| Object ops (merge/split/rotate/crop/metadata/sanitize/stamps/N-up/booklet/images→PDF/optimize) | **Rust `unfleece-core`** (lopdf + krilla, 230 cargo tests) | MIT/Apache | lazy worker |
+| Forms fill/flatten · protect/unlock | `@cantoo/pdf-lib` (last remaining JS engine surface) | MIT | lazy worker |
 | Lossless optimize | `lopdf` in `unfleece-core` (Rust→WASM) | MIT/Apache | lazy per tool |
 | Render / view / PDF→image | `pdf.js` + Canvas today; PDFium remains an evaluated future option for harder rendering cases | Apache / BSD candidate | lazy |
 | Image codecs | `jSquash` (per-codec) | Apache-2.0 | tiny, per-codec lazy |

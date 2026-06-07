@@ -14,7 +14,7 @@ describe('imagesToPdf', () => {
     expect(await pageCount(out)).toBe(2);
   });
 
-  it('reports image-to-pdf progress per image', async () => {
+  it('reports image-to-pdf progress at start and completion', async () => {
     const onProgress = vi.fn();
 
     await imagesToPdf([
@@ -22,7 +22,7 @@ describe('imagesToPdf', () => {
       { bytes: PNG_1x1, type: 'png' },
     ], {}, onProgress);
 
-    expect(onProgress).toHaveBeenCalledWith(expect.objectContaining({ label: 'Adding image 1 of 2…', current: 0, total: 2 }));
+    expect(onProgress).toHaveBeenCalledWith(expect.objectContaining({ label: 'Building a 2-page PDF in Rust core…', current: 0, total: 2 }));
     expect(onProgress).toHaveBeenCalledWith(expect.objectContaining({ current: 2, total: 2 }));
   });
 

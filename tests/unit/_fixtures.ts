@@ -35,6 +35,35 @@ export async function load(bytes: Uint8Array): Promise<PDFDocument> {
   return PDFDocument.load(bytes, { ignoreEncryption: true });
 }
 
+function asciiBytes(text: string): Uint8Array {
+  return Uint8Array.from(text, (c) => c.charCodeAt(0));
+}
+
+/** A minimal single-page PDF with caller-controlled raw page content. */
+export function makePdfWithRawContent(content: string, size: [number, number] = [200, 200]): Uint8Array {
+  const stream = `${content}\n`;
+  const streamLength = asciiBytes(stream).length;
+  const objects = [
+    '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n',
+    '2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n',
+    `3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${size[0]} ${size[1]}] /Contents 4 0 R >>\nendobj\n`,
+    `4 0 obj\n<< /Length ${streamLength} >>\nstream\n${stream}endstream\nendobj\n`,
+  ];
+
+  let pdf = '%PDF-1.7\n';
+  const offsets: number[] = [];
+  for (const object of objects) {
+    offsets.push(pdf.length);
+    pdf += object;
+  }
+
+  const xrefOffset = pdf.length;
+  pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  pdf += offsets.map((offset) => `${String(offset).padStart(10, '0')} 00000 n \n`).join('');
+  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF\n`;
+  return asciiBytes(pdf);
+}
+
 /** A minimal valid 1x1 PNG. */
 export const PNG_1x1: Uint8Array = Uint8Array.from(
   atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='),

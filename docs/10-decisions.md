@@ -105,3 +105,24 @@ to the Pages project; all canonical URLs, sitemap, robots and OG metadata point 
 `unfleece.pages.dev` stays as deploy alias.
 **Why:** owned domain is the brand; pages.dev remains a $0 fallback and preview surface.
 **Consequence:** the only recurring infrastructure cost is the ~$10/yr domain.
+
+### ADR-014 — Rust-first engine: TypeScript reduced to UI + rendering glue
+**Decision:** every PDF operation that does not require page *rendering* lives in the
+Rust `unfleece-core` crate (lopdf/krilla → WASM), organized as one module per operation
+family (`pages`, `merge`, `boxes`, `meta`, `sanitize`, `stamp_text`, `stamp_image`,
+`images_to_pdf`, `impose`, `pdfa`) behind `*_native` host-testable functions with thin
+`wasm_bindgen` wrappers. Multi-part inputs cross the boundary as length-prefixed
+little-endian packs (`core/src/pack.rs` ↔ `src/lib/wasm/pack.ts` — kept in lockstep).
+TypeScript keeps: UI, worker RPC, pdf.js rendering paths, Canvas/OCR/Ghostscript glue,
+and pdf-lib **only** for AcroForm fill/flatten and protect/unlock (wave 2 candidates).
+**Why:** the owned moat belongs in Rust (one engine, host-testable, no JS library
+drift); lopdf object-graph surgery outperforms and out-tests the pdf-lib equivalents;
+WASM is loaded once and shared by all tools.
+**Consequence:** ~6,900 lines of Rust with 230 cargo tests own the engine; the eight
+migrated TS tool files shrank from ~790 to ~420 lines of orchestration; unit tests run
+against the real WASM in Node (the silent pdf-lib fallback that previously masked WASM
+load failures was removed); the wasm binary grew only ~0.3 MB (PNG/JPEG codecs included).
+Known facts encoded in tests: lopdf must never receive duplicate page indices in a
+same-document rewrite; lopdf does not reject encrypted PDFs (a TS `/Encrypt` pre-check
+guards sanitize); Standard-14 Helvetica metrics are embedded AFM tables (kern-free,
+matching what is actually painted).

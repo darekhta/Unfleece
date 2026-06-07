@@ -1,4 +1,4 @@
-import { loadPdf } from '../util/pdf.js';
+import { wasmPageCount, wasmStampImages, type WasmImageStamp } from '../wasm/core.js';
 import type { ImageType } from './imagesToPdf.js';
 
 export interface StampOptions {
@@ -14,32 +14,29 @@ export interface StampOptions {
   opacity?: number;
 }
 
+/** Resolve TS-side defaults into the wire shape the Rust core expects. */
+function toWasmStamp(s: StampPlacement): WasmImageStamp {
+  return {
+    image: s.image,
+    imageType: s.imageType,
+    pageIndex: s.pageIndex,
+    x: s.x,
+    y: s.y,
+    width: s.width,
+    height: s.height ?? 0, // 0 = derive height from the image aspect ratio
+    opacity: s.opacity ?? 1,
+  };
+}
+
 /**
  * Stamp an image (e.g. a drawn/typed signature) onto a page. This is an
  * *electronic* signature (a visual mark) — it carries no cryptographic proof.
+ * Runs in the Rust core: JPEGs pass through byte-for-byte and PNG alpha
+ * becomes an /SMask.
  */
 export async function stampImage(bytes: Uint8Array, opts: StampOptions): Promise<Uint8Array> {
-  const doc = await loadPdf(bytes);
-  const pages = doc.getPages();
-  const idx = opts.pageIndex ?? pages.length - 1;
-  const page = pages[idx];
-  if (!page) throw new Error(`Page index ${idx} out of range`);
-
-  const embedded =
-    opts.imageType === 'png' ? await doc.embedPng(opts.image) : await doc.embedJpg(opts.image);
-
-  const aspect = embedded.height / embedded.width;
-  const width = opts.width;
-  const height = opts.height ?? width * aspect;
-
-  page.drawImage(embedded, {
-    x: opts.x,
-    y: opts.y,
-    width,
-    height,
-    opacity: opts.opacity ?? 1,
-  });
-  return doc.save();
+  const pageIndex = opts.pageIndex ?? (await wasmPageCount(bytes)) - 1;
+  return wasmStampImages(bytes, [toWasmStamp({ ...opts, pageIndex })]);
 }
 
 export interface StampPlacement {
@@ -56,27 +53,10 @@ export interface StampPlacement {
 }
 
 /**
- * Stamp several images in one pass (multi-page signing). The document is loaded
- * once and identical image buffers are embedded only once.
+ * Stamp several images in one pass (multi-page signing). The Rust core loads
+ * the document once and dedupes identical image bytes to a single XObject.
  */
 export async function stampImageMany(bytes: Uint8Array, stamps: StampPlacement[]): Promise<Uint8Array> {
   if (stamps.length === 0) throw new Error('No signatures placed');
-  const doc = await loadPdf(bytes);
-  const pages = doc.getPages();
-  const cache = new Map<Uint8Array, Awaited<ReturnType<typeof doc.embedPng>>>();
-
-  for (const s of stamps) {
-    const page = pages[s.pageIndex];
-    if (!page) throw new Error(`Page index ${s.pageIndex} out of range`);
-    let embedded = cache.get(s.image);
-    if (!embedded) {
-      embedded = s.imageType === 'png' ? await doc.embedPng(s.image) : await doc.embedJpg(s.image);
-      cache.set(s.image, embedded);
-    }
-    const aspect = embedded.height / embedded.width;
-    const width = s.width;
-    const height = s.height ?? width * aspect;
-    page.drawImage(embedded, { x: s.x, y: s.y, width, height, opacity: s.opacity ?? 1 });
-  }
-  return doc.save();
+  return wasmStampImages(bytes, stamps.map(toWasmStamp));
 }

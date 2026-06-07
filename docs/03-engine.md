@@ -1,5 +1,12 @@
 # 03 — Engine Strategy: Build vs. Wrap
 
+> **Status: executed.** The build-the-moat plan below is now reality: `unfleece-core`
+> (Rust→WASM, ten modules, 230 cargo tests) owns every non-rendering operation —
+> merge, page selection/rotation, crop boxes, metadata, sanitize, text + image
+> stamping, images→PDF, N-up/booklet imposition, lossless optimize and PDF/A
+> emission. pdf.js remains the renderer; Ghostscript-WASM the compressor; pdf-lib
+> survives only behind forms fill/flatten and protect/unlock. See ADR-014.
+
 > **TL;DR.** Build the ~20% that is our moat (page-object manipulation + PDF generation +
 > privacy ops) in pure Rust→WASM. Wrap the ~80% that is a 20-year tar pit (render, OCR,
 > compress, office) with proven engines. The single biggest trap is trying to build the
