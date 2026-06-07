@@ -1,0 +1,25 @@
+---
+import Icon from './Icon.astro';
+import { CATEGORIES, type Tool } from '../lib/registry';
+
+const { tool } = Astro.props as { tool: Tool };
+const meta = CATEGORIES[tool.category];
+const chipCls = meta.catClass ? `chip ${meta.catClass}` : 'chip';
+let cls = 'tool-card';
+if (tool.feature) cls += ' feature';
+if (tool.wide) cls += ' wide';
+const glow = `--card-glow:color-mix(in srgb, ${meta.hue} 22%, transparent)`;
+---
+
+<a class={cls} href={`/tools/${tool.slug}`} style={glow} aria-label={`${tool.name} — ${tool.tagline}`}>
+  <div class="tc-head">
+    <span class={chipCls}><Icon name={tool.icon} /></span>
+    <span class="open-hint">Open <Icon name="arrowRight" sw={2} /></span>
+  </div>
+  <div class="tc-body">
+    <div class="tc-name">{tool.name}</div>
+    <div class="tc-tag">{tool.tagline}</div>
+    {tool.feature && tool.description && <div class="tc-desc">{tool.description}</div>}
+  </div>
+  {tool.wide && <span class="open-hint" style="margin-left:auto">Open <Icon name="arrowRight" sw={2} /></span>}
+</a>

@@ -1,0 +1,51 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+.output/
+.astro/
+build/
+
+# Rust / WASM
+target/
+core/target/
+**/*.rs.bk
+*.wasm.map
+# NOTE: src/lib/wasm/pkg (wasm-pack output) IS committed so `npm run build`
+# works without the Rust toolchain. Regenerate with `npm run build:wasm`.
+
+# Cloudflare
+.wrangler/
+.dev.vars
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+*.zip
+
+# Test / coverage
+test-results/
+playwright-report/
+blob-report/
+coverage/
+.nyc_output/
+*.tsbuildinfo
+
+# Large vendored WASM artifacts (fetch/build via scripts; host oversized ones on R2)
+public/wasm/*.wasm
+!public/wasm/.gitkeep

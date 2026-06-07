@@ -1,0 +1,76 @@
+---
+import Base from '../layouts/Base.astro';
+import Icon from '../components/Icon.astro';
+---
+
+<Base title="How it works" description="How Unfleece keeps your PDF files private: everything runs in your browser via WebAssembly. No upload, no account, no fleeceware.">
+  <section class="section" style="padding-top:2.5rem">
+    <div class="container content-width">
+      <div class="section-head" style="margin-bottom:1.5rem">
+        <span class="eyebrow">How it works</span>
+        <h1 class="h1">Your files never leave your browser.</h1>
+        <p class="body-lg ink-soft" style="margin-top:.75rem; max-width:60ch">
+          Unfleece runs every PDF operation locally via WebAssembly. There is no server that
+          receives, stores, or processes your documents — which is exactly why it can be free.
+        </p>
+      </div>
+
+      <div id="privacy" class="reassure glass" style="scroll-margin-top:84px">
+        <div>
+          <span class="eyebrow accent-text" style="display:block;margin-bottom:.75rem">Don't trust us — verify it</span>
+          <h2 class="h2">Prove it's private in 10 seconds.</h2>
+          <p class="body">Don't take our word for it. Watch the network while you work — the only requests are for the app's own code, which your browser caches. The source is open, so you can read exactly what it does.</p>
+        </div>
+        <div class="steps">
+          <div class="step"><span class="n">1</span><p><strong>Open any tool</strong> and press F12 → Network tab.</p></div>
+          <div class="step"><span class="n">2</span><p><strong>Run it on a file.</strong> Watch the request list.</p></div>
+          <div class="step"><span class="n">3</span><p><strong>See nothing upload.</strong> Turn off Wi-Fi — it still works.</p></div>
+        </div>
+      </div>
+
+      <section class="tool-section">
+        <span class="eyebrow">Why it's free</span>
+        <h2 class="h2">No server, no bill, no paywall</h2>
+        <p class="body ink-soft" style="max-width:64ch">
+          Because all the work happens on your computer, Unfleece has no compute or bandwidth bill —
+          so there's nothing to monetize with a trial trap. The fleeceware sites charge you for
+          something your own device can already do.
+        </p>
+      </section>
+
+      <section class="tool-section">
+        <span class="eyebrow">Honest about limits</span>
+        <h2 class="h2">What it can and can't do</h2>
+        <div class="compare">
+          <div class="col us">
+            <h3 class="h4">What works great</h3>
+            <ul>
+              <li><Icon name="check" /> Merge, split, rotate, organize, crop</li>
+              <li><Icon name="check" /> Images ↔ PDF, PDF → images / text</li>
+              <li><Icon name="check" /> Watermark, page numbers, metadata, sign</li>
+              <li><Icon name="check" /> Lossless optimize & compress</li>
+            </ul>
+          </div>
+          <div class="col them">
+            <h3 class="h4">Honest caveats</h3>
+            <ul>
+              <li><Icon name="alert" /> Very large files are bound by your device memory</li>
+              <li><Icon name="alert" /> PDF→Text is selectable text only (scans need OCR)</li>
+              <li><Icon name="alert" /> Compress uses Ghostscript; raster fallback is image-only</li>
+              <li><Icon name="alert" /> We label every tool for what it actually does</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="tool-section">
+        <span class="eyebrow">Open source</span>
+        <h2 class="h2">Auditable by design</h2>
+        <p class="body ink-soft" style="max-width:64ch">
+          Unfleece is released under the AGPL-3.0 license. Contributions, audits, and self-hosting are
+          welcome — <a class="btn-link" href="https://github.com/darekhta/Unfleece" target="_blank" rel="noopener">view the source on GitHub ↗</a>.
+        </p>
+      </section>
+    </div>
+  </section>
+</Base>

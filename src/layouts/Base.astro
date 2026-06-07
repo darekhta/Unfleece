@@ -1,0 +1,160 @@
+---
+import '../styles/global.css';
+import Icon from '../components/Icon.astro';
+import { CATEGORY_TEXT, LAYOUT_TEXT, type Locale } from '../lib/locales';
+
+interface Props {
+  title?: string;
+  description?: string;
+  lang?: Locale;
+  canonicalPath?: string;
+  alternates?: { lang: string; path: string }[];
+}
+const {
+  title = 'Unfleece — free, private PDF tools',
+  description = 'Free, private PDF tools that run 100% in your browser. Merge, split, compress, convert and more — your files never leave your device. No upload, no account, no fleeceware.',
+  lang = 'en',
+  canonicalPath,
+  alternates = [],
+} = Astro.props;
+
+const fullTitle = title === 'Unfleece — free, private PDF tools' ? title : `${title} · Unfleece`;
+const canonical = new URL(canonicalPath ?? Astro.url.pathname, Astro.site).toString();
+const repo = 'https://github.com/darekhta/Unfleece';
+const t = LAYOUT_TEXT[lang];
+const categories = CATEGORY_TEXT[lang];
+---
+
+<!doctype html>
+<html lang={lang} data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    {alternates.map((alt) => <link rel="alternate" hreflang={alt.lang} href={new URL(alt.path, Astro.site).toString()} />)}
+    <meta name="theme-color" content="#EEF1F7" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/logo.png" type="image/png" />
+    <link rel="apple-touch-icon" href="/logo.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Unfleece" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:site_name" content="Unfleece" />
+    <meta property="og:image" content={new URL('/og-logo.png', Astro.site).toString()} />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <!-- Default theme is light; honor a saved 'dark' before paint to avoid a flash. -->
+    <script is:inline>
+      (function () {
+        try {
+          if (localStorage.getItem('uf-theme') === 'dark')
+            document.documentElement.removeAttribute('data-theme');
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">{t.skip}</a>
+
+    <header class="site-header">
+      <div class="container header-inner">
+        <a class="brand" href="/" aria-label={t.homeAria}>
+          <img src="/logo.png" alt="" class="mark" width="30" height="30" />
+          <span>unfleece</span>
+        </a>
+
+        <nav class="main-nav" aria-label={t.navAria}>
+          <a href="/#tools-section">{t.allTools}</a>
+          <a href="/about">{t.howItWorks}</a>
+          <a href="/about#privacy">{t.privacy}</a>
+        </nav>
+
+        <div class="header-actions">
+          <button class="btn-icon theme-toggle" id="theme-toggle" type="button" aria-label="Switch theme">
+            <span class="moon"><Icon name="moon" /></span>
+            <span class="sun"><Icon name="sun" /></span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main id="main">
+      <slot />
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-grid">
+          <div class="footer-brand">
+            <a class="brand" href="/"><img src="/logo.png" alt="" class="mark" width="28" height="28" /><span>unfleece</span></a>
+            <p>{t.footerBlurb}</p>
+          </div>
+          <div>
+            <h4>{t.tools}</h4>
+            <ul>
+              <li><a href="/#tools-section">{categories.organize.label}</a></li>
+              <li><a href="/#tools-section">{categories.convert.label}</a></li>
+              <li><a href="/#tools-section">{categories.edit.label}</a></li>
+              <li><a href="/#tools-section">{categories.optimize.label}</a></li>
+              <li><a href="/#tools-section">{categories.forms.label}</a></li>
+            </ul>
+          </div>
+          <div>
+            <h4>{t.project}</h4>
+            <ul>
+              <li><a href="/about">{t.howItWorks}</a></li>
+              <li><a href={repo} target="_blank" rel="noopener">{t.github}</a></li>
+              <li><a href={`${repo}/blob/main/LICENSE`} target="_blank" rel="noopener">{t.license}</a></li>
+              <li><a href={`${repo}/issues`} target="_blank" rel="noopener">{t.reportIssue}</a></li>
+            </ul>
+          </div>
+          <div>
+            <h4>{t.trust}</h4>
+            <ul>
+              <li class="footer-check"><Icon name="check" /> {t.noUpload}</li>
+              <li class="footer-check"><Icon name="check" /> {t.noAccount}</li>
+              <li class="footer-check"><Icon name="check" /> {t.noTracking}</li>
+            </ul>
+          </div>
+        </div>
+        <div class="footer-legal">
+          <span>Open source · AGPL-3.0 · No upload · No account · 🐑</span>
+          <span>© 2026 Unfleece</span>
+        </div>
+      </div>
+    </footer>
+
+    <script is:inline>
+      (function () {
+        var KEY = 'uf-theme';
+        var root = document.documentElement;
+        function cur() { return root.getAttribute('data-theme') === 'light' ? 'light' : 'dark'; }
+        var btn = document.getElementById('theme-toggle');
+        if (!btn) return;
+        function label() { btn.setAttribute('aria-label', 'Switch to ' + (cur() === 'light' ? 'dark' : 'light') + ' theme'); }
+        label();
+        btn.addEventListener('click', function () {
+          var next = cur() === 'light' ? 'dark' : 'light';
+          if (next === 'light') root.setAttribute('data-theme', 'light');
+          else root.removeAttribute('data-theme');
+          try { localStorage.setItem(KEY, next); } catch (e) {}
+          label();
+        });
+      })();
+    </script>
+    <script is:inline>
+      (function () {
+        if (!('serviceWorker' in navigator)) return;
+        window.addEventListener('load', function () {
+          navigator.serviceWorker.register('/sw.js').catch(function () {});
+        });
+      })();
+    </script>
+  </body>
+</html>

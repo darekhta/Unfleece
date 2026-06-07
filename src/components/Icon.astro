@@ -1,0 +1,27 @@
+---
+import { iconPaths } from '../lib/icons';
+
+interface Props {
+  name: string;
+  sw?: number;
+  size?: number;
+  class?: string;
+}
+const { name, sw = 1.75, size, class: cls } = Astro.props;
+const inner = iconPaths(name);
+const style = size ? `width:${size}px;height:${size}px` : undefined;
+const klass = ['icon', cls].filter(Boolean).join(' ');
+---
+
+<svg
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width={sw}
+  stroke-linecap="round"
+  stroke-linejoin="round"
+  aria-hidden="true"
+  class={klass}
+  style={style}
+  set:html={inner}
+/>
