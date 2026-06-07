@@ -126,3 +126,23 @@ Known facts encoded in tests: lopdf must never receive duplicate page indices in
 same-document rewrite; lopdf does not reject encrypted PDFs (a TS `/Encrypt` pre-check
 guards sanitize); Standard-14 Helvetica metrics are embedded AFM tables (kern-free,
 matching what is actually painted).
+
+### ADR-015 — Wave 2: pdf-lib fully removed; the engine is 100% Rust
+**Decision:** port the last pdf-lib-backed operations into `unfleece-core` and drop
+`@cantoo/pdf-lib` from production. New Rust modules: `forms` (AcroForm list/fill/flatten
+with regenerated appearance streams), `crypto` (Standard Security protect/unlock — a
+from-scratch RC4 + AESV2 + AESV3 handler on RustCrypto, because lopdf's own `decrypt`
+panics on real files), `office` (DOCX/XLSX/PPTX containers + row/column reconstruction
+via the `zip` crate), `epub` (reflowable + fixed-layout EPUB), `text_pdf` (text→PDF
+layout), and `assemble` (image-only PDF builder, invisible OCR text layer, per-page
+CropBox) which lets the browser assemblers — redact, raster-compress, OCR, auto-crop —
+stop assembling with pdf-lib. pdf.js still renders; `@cantoo/pdf-lib` is now a
+**devDependency only**, kept as an independent test oracle.
+**Why:** one owned, host-testable engine; lopdf object-graph work beats and out-tests
+the pdf-lib equivalents; removing pdf-lib from the bundle finishes the Rust-first goal.
+**Consequence:** the core is ~13k lines of Rust with **539 cargo tests** (cross-engine
+pdf-lib/qpdf-style fixtures, proptest round-trips, and a panic-fuzz harness that feeds
+hostile bytes to every entry point — it already caught a `u32` index-overflow panic),
+plus 169 vitest (through real WASM) and 47 E2E. wasm grew 2.05 → 2.59 MB (crypto + zip +
+image codecs). GOTCHA pinned: pdf.js detaches the input ArrayBuffer, so any tool that
+re-uses the bytes after `getDocument` must pass `bytes.slice()` (bit OCR).

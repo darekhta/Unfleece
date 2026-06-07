@@ -1,6 +1,5 @@
 /// <reference lib="webworker" />
 import * as Comlink from 'comlink';
-import { loadPdf } from '../util/pdf.js';
 import { parsePageRanges } from '../util/ranges.js';
 import { mergePdfs } from '../tools/merge.js';
 import {
@@ -16,14 +15,10 @@ import type { ProgressCallback } from '../progress.js';
 import { wasmPageCount } from '../wasm/core.js';
 
 async function countPages(bytes: Uint8Array): Promise<number> {
-  try {
-    return await wasmPageCount(bytes);
-  } catch {
-    return (await loadPdf(bytes)).getPageCount();
-  }
+  return wasmPageCount(bytes);
 }
 
-/** The off-main-thread API. Heavy pdf-lib work runs here so the UI stays smooth. */
+/** The off-main-thread API. Heavy PDF work runs here so the UI stays smooth. */
 const api = {
   getPageCount: (file: Uint8Array) => countPages(file),
 

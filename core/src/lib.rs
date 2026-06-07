@@ -18,17 +18,26 @@
 pub mod pack;
 pub mod util;
 
+pub mod assemble;
 pub mod boxes;
+pub mod crypto;
+pub mod epub;
+pub mod forms;
 pub mod images_to_pdf;
 pub mod impose;
 pub mod merge;
 pub mod meta;
+pub mod office;
 pub mod organize_extra;
 pub mod pages;
 pub mod pdfa;
 pub mod sanitize;
 pub mod stamp_image;
 pub mod stamp_text;
+pub mod text_pdf;
+
+#[cfg(test)]
+mod fuzz_tests;
 
 pub use merge::merge_pdfs_native;
 pub use pages::{
@@ -36,13 +45,19 @@ pub use pages::{
 };
 pub use pdfa::pdfa_from_png_pages_native;
 // organize_extra: contract tests only — no public *_native functions to re-export (organize.ts reduces to pages.rs fns + TS index math)
+pub use assemble::{add_text_layer_native, image_pages_to_pdf_native, set_crop_boxes_native};
 pub use boxes::crop_margins_native;
+pub use crypto::{is_encrypted_native, protect_native, unlock_native};
+pub use epub::{fixed_pages_to_epub_native, text_pages_to_epub_native};
+pub use forms::{fill_form_native, flatten_form_native, list_form_fields_native};
 pub use images_to_pdf::images_to_pdf_native;
 pub use impose::{booklet_native, n_up_native};
 pub use meta::{read_metadata_native, set_metadata_native, strip_metadata_native};
+pub use office::{text_pages_to_docx_native, text_pages_to_pptx_native, text_pages_to_xlsx_native};
 pub use sanitize::{sanitize_native, sanitize_report_native};
 pub use stamp_image::stamp_images_native;
 pub use stamp_text::{add_page_numbers_native, add_watermark_native};
+pub use text_pdf::text_to_pdf_native;
 
 // ---------------------------------------------------------------------------
 // wasm bindings (compiled only for wasm32)
@@ -190,5 +205,102 @@ mod wasm {
     #[wasm_bindgen]
     pub fn booklet(data: &[u8], opts_json: &str) -> Result<Vec<u8>, JsError> {
         map_str(super::booklet_native(data, opts_json))
+    }
+
+    /// Build an image-only PDF (one page per packed image) — redact / raster compress.
+    #[wasm_bindgen]
+    pub fn image_pages_to_pdf(pack: &[u8]) -> Result<Vec<u8>, JsError> {
+        map_str(super::image_pages_to_pdf_native(pack))
+    }
+
+    /// Append an invisible Helvetica text layer onto existing pages (OCR).
+    #[wasm_bindgen]
+    pub fn add_text_layer(data: &[u8], pack: &[u8]) -> Result<Vec<u8>, JsError> {
+        map_str(super::add_text_layer_native(data, pack))
+    }
+
+    /// Set a per-page CropBox on listed pages (auto-crop).
+    #[wasm_bindgen]
+    pub fn set_crop_boxes(data: &[u8], pack: &[u8]) -> Result<Vec<u8>, JsError> {
+        map_str(super::set_crop_boxes_native(data, pack))
+    }
+
+    /// List AcroForm fields as a JSON array of `{name, type, options?, value?}`.
+    #[wasm_bindgen]
+    pub fn list_form_fields(data: &[u8]) -> Result<String, JsError> {
+        map_str(super::list_form_fields_native(data))
+    }
+
+    /// Fill form fields from a `{fieldName: string|bool}` JSON object,
+    /// regenerating appearances and clearing NeedAppearances.
+    #[wasm_bindgen]
+    pub fn fill_form(data: &[u8], values_json: &str) -> Result<Vec<u8>, JsError> {
+        map_str(super::fill_form_native(data, values_json))
+    }
+
+    /// Flatten the form: bake appearances into page content and drop widgets + AcroForm.
+    #[wasm_bindgen]
+    pub fn flatten_form(data: &[u8]) -> Result<Vec<u8>, JsError> {
+        map_str(super::flatten_form_native(data))
+    }
+
+    /// Report whether the PDF carries an `/Encrypt` dictionary (password peek).
+    #[wasm_bindgen]
+    pub fn is_encrypted(data: &[u8]) -> Result<bool, JsError> {
+        map_str(super::is_encrypted_native(data))
+    }
+
+    /// Decrypt with a user or owner password; returns the unencrypted PDF.
+    #[wasm_bindgen]
+    pub fn unlock(data: &[u8], password: &str) -> Result<Vec<u8>, JsError> {
+        map_str(super::unlock_native(data, password))
+    }
+
+    /// Encrypt with AESV2 Standard Security. `opts_json` mirrors
+    /// `ProtectOptions` (`userPassword`, `ownerPassword?`, `allowPrinting?`,
+    /// `allowCopying?`, `allowModifying?`).
+    #[wasm_bindgen]
+    pub fn protect(data: &[u8], opts_json: &str) -> Result<Vec<u8>, JsError> {
+        map_str(super::protect_native(data, opts_json))
+    }
+
+    /// Lay out preprocessed plain text into a paged PDF.
+    /// `opts_json` mirrors documentPdf.ts: `{title?, pageSize?: "a4"|"letter", fontSize?, margin?}`.
+    #[wasm_bindgen]
+    pub fn text_to_pdf(text: &str, opts_json: &str) -> Result<Vec<u8>, JsError> {
+        map_str(super::text_to_pdf_native(text, opts_json))
+    }
+
+    /// Build a DOCX from extracted PDF text pages (the `UFTP` pack).
+    #[wasm_bindgen]
+    pub fn text_pages_to_docx(pack: &[u8]) -> Result<Vec<u8>, JsError> {
+        map_str(super::text_pages_to_docx_native(pack))
+    }
+
+    /// Build an XLSX from extracted PDF text pages (the `UFTP` pack).
+    #[wasm_bindgen]
+    pub fn text_pages_to_xlsx(pack: &[u8]) -> Result<Vec<u8>, JsError> {
+        map_str(super::text_pages_to_xlsx_native(pack))
+    }
+
+    /// Build a PPTX from extracted PDF text pages (the `UFTP` pack).
+    #[wasm_bindgen]
+    pub fn text_pages_to_pptx(pack: &[u8]) -> Result<Vec<u8>, JsError> {
+        map_str(super::text_pages_to_pptx_native(pack))
+    }
+
+    /// Build a reflowable EPUB from a `UFTP` text-pages pack. `opts_json` mirrors
+    /// ReflowableEpubOptions (`{title?, author?, language?, identifier?, modified?,
+    /// removeHeadersFooters?, unwrapParagraphs?, repairHyphenation?}`).
+    #[wasm_bindgen]
+    pub fn text_pages_to_epub(pack: &[u8], opts_json: &str) -> Result<Vec<u8>, JsError> {
+        map_str(super::text_pages_to_epub_native(pack, opts_json))
+    }
+
+    /// Build a fixed-layout EPUB from a `UFXP` page-image pack. `opts_json` mirrors
+    /// FixedLayoutEpubOptions (`{title?, author?, language?, identifier?, modified?}`).
+    #[wasm_bindgen]
+    pub fn fixed_pages_to_epub(pack: &[u8], opts_json: &str) -> Result<Vec<u8>, JsError> {
+        map_str(super::fixed_pages_to_epub_native(pack, opts_json))
     }
 }

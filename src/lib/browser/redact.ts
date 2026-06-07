@@ -1,6 +1,6 @@
-import { PDFDocument } from '@cantoo/pdf-lib';
 import { pdfjsLib } from './pdfjs.js';
 import { abortError, reportProgress, throwIfAborted, type RunOptions } from '../progress.js';
+import { wasmImagePagesToPdf, type WasmImagePage } from '../wasm/core.js';
 
 export interface RedactionRegion {
   pageIndex: number;
@@ -69,7 +69,7 @@ export async function redactPdf(bytes: Uint8Array, opts: RedactOptions, run: Run
 
   reportProgress(run, { phase: 'loading', label: 'Opening PDF…' });
   const source = await pdfjsLib.getDocument({ data: bytes }).promise;
-  const out = await PDFDocument.create();
+  const imagePages: WasmImagePage[] = [];
 
   try {
     for (let i = 1; i <= source.numPages; i++) {
@@ -105,9 +105,8 @@ export async function redactPdf(bytes: Uint8Array, opts: RedactOptions, run: Run
         ctx.fillRect(r.x, r.y, r.w, r.h);
       }
 
-      const image = await out.embedPng(await (await canvasBlob(canvas)).arrayBuffer());
-      const outPage = out.addPage([base.width, base.height]);
-      outPage.drawImage(image, { x: 0, y: 0, width: base.width, height: base.height });
+      const png = new Uint8Array(await (await canvasBlob(canvas)).arrayBuffer());
+      imagePages.push({ widthPt: base.width, heightPt: base.height, bytes: png, type: 'png' });
       canvas.width = 0;
       canvas.height = 0;
       page.cleanup();
@@ -119,5 +118,5 @@ export async function redactPdf(bytes: Uint8Array, opts: RedactOptions, run: Run
 
   reportProgress(run, { phase: 'saving', label: 'Saving redacted PDF…' });
   throwIfAborted(run.signal);
-  return out.save();
+  return wasmImagePagesToPdf(imagePages);
 }

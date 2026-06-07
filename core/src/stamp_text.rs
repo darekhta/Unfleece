@@ -46,7 +46,7 @@ const PAGE_NUMBER_COLOR: [f32; 3] = [0.1, 0.1, 0.1];
 // ---------------------------------------------------------------------------
 
 /// Helvetica glyph advance widths for WinAnsi codes 0x20..=0xFF.
-const HELVETICA_WIDTHS: [u16; 224] = [
+pub(crate) const HELVETICA_WIDTHS: [u16; 224] = [
     // 0x20 (space) .. 0x2F
     278, 278, 355, 556, 556, 889, 667, 191, 333, 333, 389, 584, 278, 333, 278, 278,
     // 0x30 (0) .. 0x3F (?)
@@ -78,7 +78,7 @@ const HELVETICA_WIDTHS: [u16; 224] = [
 ];
 
 /// Helvetica-Bold glyph advance widths for WinAnsi codes 0x20..=0xFF.
-const HELVETICA_BOLD_WIDTHS: [u16; 224] = [
+pub(crate) const HELVETICA_BOLD_WIDTHS: [u16; 224] = [
     // 0x20 (space) .. 0x2F
     278, 333, 474, 556, 556, 889, 722, 238, 333, 333, 389, 584, 278, 333, 278, 278,
     // 0x30 (0) .. 0x3F (?)
@@ -363,7 +363,7 @@ fn winansi_code(ch: char) -> Option<u8> {
 
 /// Encode text as WinAnsi bytes: control characters are stripped and
 /// unrepresentable characters become `?` (pdf-lib would throw instead).
-fn encode_winansi(text: &str) -> Vec<u8> {
+pub(crate) fn encode_winansi(text: &str) -> Vec<u8> {
     text.chars()
         .filter(|c| !c.is_control())
         .map(|c| winansi_code(c).unwrap_or(b'?'))
@@ -371,7 +371,7 @@ fn encode_winansi(text: &str) -> Vec<u8> {
 }
 
 /// Advance width in pt of WinAnsi-encoded text in the given AFM table.
-fn text_width_pt(encoded: &[u8], widths: &[u16; 224], font_size: f32) -> f32 {
+pub(crate) fn text_width_pt(encoded: &[u8], widths: &[u16; 224], font_size: f32) -> f32 {
     let units: u32 = encoded
         .iter()
         .map(|&b| u32::from(widths[(b - 0x20) as usize]))

@@ -1,6 +1,5 @@
-import { PDFDocument } from '@cantoo/pdf-lib';
 import { notifyProgress, type ProgressCallback } from '../progress.js';
-import { wasmSanitize } from '../wasm/core.js';
+import { wasmSanitize, wasmIsEncrypted, wasmProtect, wasmUnlock } from '../wasm/core.js';
 
 export interface SanitizeOptions {
   removeAnnotations?: boolean;
@@ -17,8 +16,7 @@ export interface ProtectOptions {
 
 async function hasEncryptDictionary(bytes: Uint8Array): Promise<boolean> {
   try {
-    const doc = await PDFDocument.load(bytes, { ignoreEncryption: true, updateMetadata: false });
-    return doc.context.trailerInfo.Encrypt !== undefined;
+    return await wasmIsEncrypted(bytes);
   } catch {
     // Let the Rust core surface its normal parser error for malformed PDFs.
     return false;
@@ -30,8 +28,8 @@ async function hasEncryptDictionary(bytes: Uint8Array): Promise<boolean> {
  * scripts, embedded files, page/document actions and (optionally) annotations
  * and forms. Executed by the Rust→WASM core (lopdf).
  *
- * Encrypted PDFs are rejected up front: the core cannot decrypt them, and
- * sanitizing without decrypting would silently corrupt the page content.
+ * Encrypted PDFs are rejected up front: sanitizing without decrypting would
+ * silently corrupt the page content — unlock first.
  */
 export async function sanitizePdf(bytes: Uint8Array, options: SanitizeOptions = {}, onProgress?: ProgressCallback): Promise<Uint8Array> {
   if (await hasEncryptDictionary(bytes)) {
@@ -46,37 +44,31 @@ export async function sanitizePdf(bytes: Uint8Array, options: SanitizeOptions = 
   return out;
 }
 
+/** Encrypt with AESV2 Standard Security via the Rust core (RustCrypto). */
 export async function protectPdf(bytes: Uint8Array, options: ProtectOptions, onProgress?: ProgressCallback): Promise<Uint8Array> {
   const userPassword = String(options.userPassword ?? '').trim();
   if (!userPassword) throw new Error('Enter a password to protect this PDF');
   const ownerPassword = String(options.ownerPassword ?? '').trim() || userPassword;
 
-  notifyProgress(onProgress, { phase: 'loading', label: 'Opening PDF…' });
-  const doc = await PDFDocument.load(bytes, { ignoreEncryption: true });
-  notifyProgress(onProgress, { phase: 'working', label: 'Encrypting PDF…' });
-  doc.encrypt({
+  notifyProgress(onProgress, { phase: 'working', label: 'Encrypting PDF in Rust core…', current: 0, total: 1 });
+  const out = await wasmProtect(bytes, {
     userPassword,
     ownerPassword,
-    permissions: {
-      printing: options.allowPrinting ? 'highResolution' : false,
-      copying: Boolean(options.allowCopying),
-      contentAccessibility: Boolean(options.allowCopying),
-      modifying: Boolean(options.allowModifying),
-      annotating: Boolean(options.allowModifying),
-      fillingForms: Boolean(options.allowModifying),
-      documentAssembly: Boolean(options.allowModifying),
-    },
+    allowPrinting: options.allowPrinting !== false,
+    allowCopying: Boolean(options.allowCopying),
+    allowModifying: Boolean(options.allowModifying),
   });
-  notifyProgress(onProgress, { phase: 'saving', label: 'Saving protected PDF…' });
-  return doc.save({ rewrite: true });
+  notifyProgress(onProgress, { phase: 'saving', label: 'Saving protected PDF…', current: 1, total: 1 });
+  return out;
 }
 
+/** Decrypt with a user or owner password via the Rust core. */
 export async function unlockPdf(bytes: Uint8Array, password: string, onProgress?: ProgressCallback): Promise<Uint8Array> {
   const cleanPassword = String(password ?? '').trim();
   if (!cleanPassword) throw new Error('Enter the password for this PDF');
 
-  notifyProgress(onProgress, { phase: 'loading', label: 'Opening encrypted PDF…' });
-  const doc = await PDFDocument.load(bytes, { password: cleanPassword, updateMetadata: false });
-  notifyProgress(onProgress, { phase: 'saving', label: 'Saving unlocked PDF…' });
-  return doc.save({ rewrite: true });
+  notifyProgress(onProgress, { phase: 'working', label: 'Decrypting PDF in Rust core…', current: 0, total: 1 });
+  const out = await wasmUnlock(bytes, cleanPassword);
+  notifyProgress(onProgress, { phase: 'saving', label: 'Saving unlocked PDF…', current: 1, total: 1 });
+  return out;
 }

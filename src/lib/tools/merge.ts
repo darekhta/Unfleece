@@ -5,7 +5,7 @@ import { wasmMergePdfs } from '../wasm/core.js';
  * Merge multiple PDFs into one, in the given order. Pure: bytes in, bytes out.
  * Runs fully client-side in the Rust core (lopdf), which materializes inherited
  * page attributes and drops document-level structures (outlines, forms, name
- * trees) exactly like pdf-lib's copyPages did.
+ * trees), matching the previous copyPages semantics.
  */
 export async function mergePdfs(files: Uint8Array[], onProgress?: ProgressCallback): Promise<Uint8Array> {
   if (files.length === 0) throw new Error('No files to merge');

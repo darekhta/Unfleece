@@ -1,9 +1,8 @@
-import { PDFDocument, StandardFonts, rgb, type PDFFont } from '@cantoo/pdf-lib';
-import { PAGE_SIZES } from '../util/pdf.js';
+import { wasmTextToPdf } from '../wasm/core.js';
 
 export interface TextToPdfOptions {
   title?: string;
-  pageSize?: keyof typeof PAGE_SIZES;
+  pageSize?: 'a4' | 'letter';
   fontSize?: number;
   margin?: number;
 }
@@ -49,43 +48,11 @@ export function sourceToPlainText(source: string, filename = ''): string {
     .trim();
 }
 
+/** NFKD-fold + ASCII-clamp the title (the Rust core re-clamps but does not NFKD). */
 function safeText(text: string): string {
   return text
     .normalize('NFKD')
     .replace(/[^\x09\x0A\x0D\x20-\x7E]/g, '?');
-}
-
-function wrapLine(text: string, maxWidth: number, font: PDFFont, fontSize: number): string[] {
-  const words = text.split(/\s+/).filter(Boolean);
-  if (words.length === 0) return [''];
-
-  const lines: string[] = [];
-  let current = '';
-  for (const word of words) {
-    const next = current ? `${current} ${word}` : word;
-    if (font.widthOfTextAtSize(next, fontSize) <= maxWidth) {
-      current = next;
-      continue;
-    }
-    if (current) lines.push(current);
-    if (font.widthOfTextAtSize(word, fontSize) <= maxWidth) {
-      current = word;
-    } else {
-      let chunk = '';
-      for (const char of word) {
-        const candidate = chunk + char;
-        if (font.widthOfTextAtSize(candidate, fontSize) > maxWidth && chunk) {
-          lines.push(chunk);
-          chunk = char;
-        } else {
-          chunk = candidate;
-        }
-      }
-      current = chunk;
-    }
-  }
-  if (current) lines.push(current);
-  return lines;
 }
 
 export async function textToPdf(source: string, filename = '', opts: TextToPdfOptions = {}): Promise<Uint8Array> {
@@ -95,36 +62,8 @@ export async function textToPdf(source: string, filename = '', opts: TextToPdfOp
     fontSize = 11,
     margin = 54,
   } = opts;
-  const [pageWidth, pageHeight] = PAGE_SIZES[pageSize] ?? PAGE_SIZES.a4;
-  const doc = await PDFDocument.create();
-  const regular = await doc.embedFont(StandardFonts.Helvetica);
-  const bold = await doc.embedFont(StandardFonts.HelveticaBold);
-  const lineHeight = fontSize * 1.45;
-  const maxWidth = pageWidth - margin * 2;
-  const bottom = margin;
-
-  let page = doc.addPage([pageWidth, pageHeight]);
-  let y = pageHeight - margin;
-
-  const titleText = safeText(title);
-  page.drawText(titleText, { x: margin, y, size: fontSize + 5, font: bold, color: rgb(0.08, 0.1, 0.16) });
-  y -= lineHeight * 1.8;
-
+  // HTML/Markdown stripping + NFKD title folding stay in TS; the Rust core lays
+  // out the text into PDF pages with the shared Helvetica metrics.
   const text = sourceToPlainText(source, filename) || 'No text content found.';
-  for (const paragraph of text.split(/\n{2,}/)) {
-    const lines = paragraph.split(/\n/).flatMap((line) => wrapLine(safeText(line), maxWidth, regular, fontSize));
-    for (const line of lines) {
-      if (y < bottom) {
-        page = doc.addPage([pageWidth, pageHeight]);
-        y = pageHeight - margin;
-      }
-      page.drawText(line || ' ', { x: margin, y, size: fontSize, font: regular, color: rgb(0.08, 0.1, 0.16) });
-      y -= lineHeight;
-    }
-    y -= lineHeight * 0.5;
-  }
-
-  doc.setTitle(titleText);
-  doc.setCreator('Unfleece');
-  return doc.save();
+  return wasmTextToPdf(text, { title: safeText(title), pageSize, fontSize, margin });
 }

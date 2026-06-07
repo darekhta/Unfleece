@@ -24,11 +24,12 @@ pub fn rotate_pages_native(
     let pages: Vec<_> = doc.page_iter().collect();
     let mut ids = Vec::with_capacity(indices.len());
     for &index in indices {
-        ids.push(
-            *pages
-                .get(index as usize)
-                .ok_or(LopdfError::PageNumberNotFound(index + 1))?,
-        );
+        ids.push(*pages.get(index as usize).ok_or_else(|| {
+            LopdfError::Syntax(format!(
+                "Page number {} could not be found",
+                index as u64 + 1
+            ))
+        })?);
     }
     rotate_ids(&mut doc, &ids, degrees)?;
     let mut buf = Vec::new();
@@ -84,9 +85,12 @@ pub fn select_pages_native(data: &[u8], indices: &[u32]) -> Result<Vec<u8>, Lopd
     let mut kids = Vec::with_capacity(indices.len());
 
     for &index in indices {
-        let page_id = *pages
-            .get(index as usize)
-            .ok_or(LopdfError::PageNumberNotFound(index + 1))?;
+        let page_id = *pages.get(index as usize).ok_or_else(|| {
+            LopdfError::Syntax(format!(
+                "Page number {} could not be found",
+                index as u64 + 1
+            ))
+        })?;
         materialize_inherited_page_attrs(&mut doc, page_id)?;
         doc.get_object_mut(page_id)?
             .as_dict_mut()?

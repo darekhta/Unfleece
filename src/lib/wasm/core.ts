@@ -7,12 +7,18 @@ import init, {
   add_watermark,
   booklet,
   crop_margins,
+  fill_form,
+  fixed_pages_to_epub,
+  flatten_form,
   images_to_pdf,
+  is_encrypted,
+  list_form_fields,
   merge_pdfs,
   n_up,
   optimize,
   page_count,
   pdfa_from_png_pages,
+  protect,
   read_metadata,
   rotate_all,
   rotate_pages,
@@ -22,6 +28,15 @@ import init, {
   set_metadata,
   stamp_images,
   strip_metadata,
+  image_pages_to_pdf,
+  add_text_layer,
+  set_crop_boxes,
+  text_pages_to_docx,
+  text_pages_to_epub,
+  text_pages_to_pptx,
+  text_pages_to_xlsx,
+  text_to_pdf,
+  unlock,
 } from './pkg/unfleece_core.js';
 import wasmUrl from './pkg/unfleece_core_bg.wasm?url';
 import { PackBuilder } from './pack.js';
@@ -207,4 +222,200 @@ export async function wasmNUp(bytes: Uint8Array, perSheet: number): Promise<Uint
 export async function wasmBooklet(bytes: Uint8Array, opts: Record<string, unknown>): Promise<Uint8Array> {
   await ensure();
   return booklet(bytes, JSON.stringify(opts));
+}
+
+// ---- AcroForm fields (fill/flatten with appearance streams) ----
+export interface WasmFormField {
+  name: string;
+  type: 'text' | 'checkbox' | 'radio' | 'dropdown' | 'optionlist' | 'button' | 'signature' | 'unknown';
+  options?: string[];
+  value?: string | boolean;
+}
+
+/** List every AcroForm field with its type, options and current value. */
+export async function wasmListFormFields(bytes: Uint8Array): Promise<WasmFormField[]> {
+  await ensure();
+  return JSON.parse(list_form_fields(bytes)) as WasmFormField[];
+}
+
+/** Fill form fields and regenerate appearance streams. Unknown names are ignored. */
+export async function wasmFillForm(bytes: Uint8Array, values: Record<string, string | boolean>): Promise<Uint8Array> {
+  await ensure();
+  return fill_form(bytes, JSON.stringify(values));
+}
+
+/** Bake field appearances into the page and drop the AcroForm + widgets. */
+export async function wasmFlattenForm(bytes: Uint8Array): Promise<Uint8Array> {
+  await ensure();
+  return flatten_form(bytes);
+}
+
+// ---- Standard Security (protect / unlock) ----
+/** Does the PDF carry an /Encrypt dictionary? (no password needed) */
+export async function wasmIsEncrypted(bytes: Uint8Array): Promise<boolean> {
+  await ensure();
+  return is_encrypted(bytes);
+}
+
+/** Decrypt with a user OR owner password; returns unlocked PDF bytes. */
+export async function wasmUnlock(bytes: Uint8Array, password: string): Promise<Uint8Array> {
+  await ensure();
+  return unlock(bytes, password);
+}
+
+export interface WasmProtectOptions {
+  userPassword: string;
+  ownerPassword?: string;
+  allowPrinting?: boolean;
+  allowCopying?: boolean;
+  allowModifying?: boolean;
+}
+
+/** Encrypt with AESV2 Standard Security (V4/R4). */
+export async function wasmProtect(bytes: Uint8Array, opts: WasmProtectOptions): Promise<Uint8Array> {
+  await ensure();
+  return protect(bytes, JSON.stringify(opts));
+}
+
+// ---- text → PDF ----
+/** Lay out preprocessed plain text into a PDF. opts: {title?, pageSize?, fontSize?, margin?}. */
+export async function wasmTextToPdf(text: string, opts: Record<string, unknown>): Promise<Uint8Array> {
+  await ensure();
+  return text_to_pdf(text, JSON.stringify(opts));
+}
+
+// ---- office / EPUB containers from extracted text pages ----
+export interface WasmTextItem {
+  text: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+export interface WasmTextPage {
+  pageNumber: number;
+  items: WasmTextItem[];
+  width?: number;
+  height?: number;
+}
+
+function packTextPages(pages: WasmTextPage[]): Uint8Array {
+  const pack = new PackBuilder('UFTP').u32(pages.length);
+  for (const p of pages) {
+    pack.u32(p.pageNumber >>> 0).f32(p.width ?? 0).f32(p.height ?? 0).u32(p.items.length);
+    for (const it of p.items) pack.f32(it.x).f32(it.y).f32(it.width).f32(it.height).str(it.text);
+  }
+  return pack.finish();
+}
+
+/** Build a DOCX from extracted PDF text pages. */
+export async function wasmTextPagesToDocx(pages: WasmTextPage[]): Promise<Uint8Array> {
+  await ensure();
+  return text_pages_to_docx(packTextPages(pages));
+}
+/** Build an XLSX from extracted PDF text pages. */
+export async function wasmTextPagesToXlsx(pages: WasmTextPage[]): Promise<Uint8Array> {
+  await ensure();
+  return text_pages_to_xlsx(packTextPages(pages));
+}
+/** Build a PPTX from extracted PDF text pages. */
+export async function wasmTextPagesToPptx(pages: WasmTextPage[]): Promise<Uint8Array> {
+  await ensure();
+  return text_pages_to_pptx(packTextPages(pages));
+}
+
+export interface WasmReflowableEpubOptions {
+  title?: string;
+  author?: string;
+  language?: string;
+  identifier?: string;
+  modified?: string;
+  removeHeadersFooters?: boolean;
+  unwrapParagraphs?: boolean;
+  repairHyphenation?: boolean;
+}
+
+/** Reflowable EPUB from extracted text pages. */
+export async function wasmTextPagesToEpub(pages: WasmTextPage[], opts: WasmReflowableEpubOptions = {}): Promise<Uint8Array> {
+  await ensure();
+  return text_pages_to_epub(packTextPages(pages), JSON.stringify({ modified: new Date().toISOString(), ...opts }));
+}
+
+export interface WasmFixedEpubPage {
+  pageNumber: number;
+  width: number;
+  height: number;
+  bytes: Uint8Array;
+  type: 'png' | 'jpg';
+}
+export interface WasmFixedEpubOptions {
+  title?: string;
+  author?: string;
+  language?: string;
+  identifier?: string;
+  modified?: string;
+}
+
+/** Fixed-layout EPUB from rendered page images. */
+export async function wasmFixedPagesToEpub(pages: WasmFixedEpubPage[], opts: WasmFixedEpubOptions = {}): Promise<Uint8Array> {
+  await ensure();
+  const pack = new PackBuilder('UFXP').u32(pages.length);
+  for (const p of pages) pack.u32(p.pageNumber >>> 0).f32(p.width).f32(p.height).u8(p.type === 'png' ? 0 : 1).bytes(p.bytes);
+  return fixed_pages_to_epub(pack.finish(), JSON.stringify({ modified: new Date().toISOString(), ...opts }));
+}
+
+// ---- image-page assembly (redact / raster compress / OCR / auto-crop) ----
+export interface WasmImagePage {
+  widthPt: number;
+  heightPt: number;
+  bytes: Uint8Array;
+  type: 'png' | 'jpg';
+}
+
+/** Build an image-only PDF: one page per image, each filling its point-size page. */
+export async function wasmImagePagesToPdf(pages: WasmImagePage[]): Promise<Uint8Array> {
+  await ensure();
+  const pack = new PackBuilder('UFAP').u32(pages.length);
+  for (const p of pages) {
+    pack.f32(p.widthPt).f32(p.heightPt).u8(p.type === 'png' ? 0 : 1).bytes(p.bytes);
+  }
+  return image_pages_to_pdf(pack.finish());
+}
+
+export interface WasmTextSpan {
+  x: number;
+  y: number;
+  fontSize: number;
+  text: string;
+}
+export interface WasmTextLayerPage {
+  pageIndex: number;
+  spans: WasmTextSpan[];
+}
+
+/** Append an invisible Helvetica text layer (PDF points, bottom-left origin) for OCR. */
+export async function wasmAddTextLayer(bytes: Uint8Array, pages: WasmTextLayerPage[]): Promise<Uint8Array> {
+  await ensure();
+  const pack = new PackBuilder('UFTL').u32(pages.length);
+  for (const p of pages) {
+    pack.u32(p.pageIndex >>> 0).u32(p.spans.length);
+    for (const s of p.spans) pack.f32(s.x).f32(s.y).f32(s.fontSize).str(s.text);
+  }
+  return add_text_layer(bytes, pack.finish());
+}
+
+export interface WasmCropBox {
+  pageIndex: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/** Set a per-page CropBox (absolute PDF coords) on listed pages. */
+export async function wasmSetCropBoxes(bytes: Uint8Array, boxes: WasmCropBox[]): Promise<Uint8Array> {
+  await ensure();
+  const pack = new PackBuilder('UFCB').u32(boxes.length);
+  for (const b of boxes) pack.u32(b.pageIndex >>> 0).f32(b.x).f32(b.y).f32(b.width).f32(b.height);
+  return set_crop_boxes(bytes, pack.finish());
 }

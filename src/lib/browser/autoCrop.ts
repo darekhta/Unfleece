@@ -1,6 +1,6 @@
-import { PDFDocument } from '@cantoo/pdf-lib';
 import { pdfjsLib } from './pdfjs.js';
 import { reportProgress, throwIfAborted, type RunOptions } from '../progress.js';
+import { wasmSetCropBoxes, type WasmCropBox } from '../wasm/core.js';
 
 export interface AutoCropOptions {
   scale?: number;
@@ -46,9 +46,8 @@ export async function autoCropPdf(bytes: Uint8Array, opts: AutoCropOptions = {},
   const padding = Math.max(0, Math.min(144, Number(opts.padding ?? 6)));
 
   reportProgress(run, { phase: 'loading', label: 'Opening PDF…' });
-  const outDoc = await PDFDocument.load(bytes.slice(), { ignoreEncryption: true });
   const renderDoc = await pdfjsLib.getDocument({ data: bytes.slice() }).promise;
-  let cropped = 0;
+  const cropBoxes: WasmCropBox[] = [];
 
   try {
     for (let i = 1; i <= renderDoc.numPages; i++) {
@@ -68,8 +67,9 @@ export async function autoCropPdf(bytes: Uint8Array, opts: AutoCropOptions = {},
 
       const image = ctx.getImageData(0, 0, canvas.width, canvas.height);
       const bounds = findContentBounds(image.data, canvas.width, canvas.height, tolerance);
-      const page = outDoc.getPage(i - 1);
-      const crop = page.getCropBox();
+      // The pdf.js viewBox is the page's crop box in PDF points: [x0, y0, x1, y1].
+      const [vx0, vy0, vx1, vy1] = renderPage.view;
+      const crop = { x: vx0, y: vy0, width: vx1 - vx0, height: vy1 - vy0 };
       if (bounds) {
         const sx = canvas.width / crop.width;
         const sy = canvas.height / crop.height;
@@ -85,8 +85,7 @@ export async function autoCropPdf(bytes: Uint8Array, opts: AutoCropOptions = {},
         const newHeight = newTop - newY;
         const reducesPage = newWidth < crop.width - 0.5 || newHeight < crop.height - 0.5;
         if (newWidth > 0 && newHeight > 0 && reducesPage) {
-          page.setCropBox(newX, newY, newWidth, newHeight);
-          cropped += 1;
+          cropBoxes.push({ pageIndex: i - 1, x: newX, y: newY, width: newWidth, height: newHeight });
         }
       }
 
@@ -99,6 +98,7 @@ export async function autoCropPdf(bytes: Uint8Array, opts: AutoCropOptions = {},
     await renderDoc.cleanup();
   }
 
+  const cropped = cropBoxes.length;
   reportProgress(run, { phase: 'saving', label: cropped > 0 ? `Cropped ${cropped} page${cropped === 1 ? '' : 's'}. Saving…` : 'No white margins found. Saving clean copy…' });
-  return outDoc.save();
+  return wasmSetCropBoxes(bytes, cropBoxes);
 }

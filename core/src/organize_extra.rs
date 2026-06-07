@@ -141,7 +141,7 @@ mod tests {
             .to_string();
         let lower = err.to_ascii_lowercase();
         assert!(lower.contains("page number"), "got: {err}");
-        assert!(lower.contains("not found"), "got: {err}");
+        assert!(lower.contains("could not be found"), "got: {err}");
     }
 
     #[test]
@@ -345,7 +345,7 @@ mod tests {
             .to_string();
         let lower = err.to_ascii_lowercase();
         assert!(lower.contains("page number"), "got: {err}");
-        assert!(lower.contains("not found"), "got: {err}");
+        assert!(lower.contains("could not be found"), "got: {err}");
     }
 
     #[test]

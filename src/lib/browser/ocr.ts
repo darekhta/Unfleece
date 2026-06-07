@@ -1,10 +1,10 @@
-import { PDFDocument, StandardFonts, rgb } from '@cantoo/pdf-lib';
 import { OCRClient, supportsFastBuild, type TextItem } from 'tesseract-wasm';
 import tesseractWorkerUrl from '../../../node_modules/tesseract-wasm/dist/tesseract-worker.js?url';
 import tesseractCoreUrl from '../../../node_modules/tesseract-wasm/dist/tesseract-core.wasm?url';
 import tesseractFallbackCoreUrl from '../../../node_modules/tesseract-wasm/dist/tesseract-core-fallback.wasm?url';
 import { abortError, reportProgress, throwIfAborted, type RunOptions } from '../progress.js';
 import { pdfjsLib } from './pdfjs.js';
+import { wasmAddTextLayer, type WasmTextLayerPage, type WasmTextSpan } from '../wasm/core.js';
 
 export interface OcrPdfOptions {
   scale?: number;
@@ -66,18 +66,22 @@ function lineText(items: TextItem[]): string {
     .join('\n');
 }
 
-function drawInvisibleTextLayer(
-  page: ReturnType<PDFDocument['getPage']>,
-  font: Awaited<ReturnType<PDFDocument['embedFont']>>,
+/** Average Helvetica glyph advance as a fraction of font size — used to size the
+ * invisible OCR text to roughly fit its box (the layer is invisible, so this
+ * only affects copy/paste alignment, not appearance). */
+const HELV_AVG_ADVANCE = 0.5;
+
+function spansForPage(
   boxes: TextItem[],
+  pageWidthPt: number,
+  pageHeightPt: number,
   canvasWidth: number,
   canvasHeight: number,
   minConfidence: number,
-) {
-  const pageWidth = page.getWidth();
-  const pageHeight = page.getHeight();
-  const scaleX = pageWidth / canvasWidth;
-  const scaleY = pageHeight / canvasHeight;
+): WasmTextSpan[] {
+  const scaleX = pageWidthPt / canvasWidth;
+  const scaleY = pageHeightPt / canvasHeight;
+  const spans: WasmTextSpan[] = [];
 
   for (const box of boxes) {
     if (box.confidence < minConfidence) continue;
@@ -87,18 +91,17 @@ function drawInvisibleTextLayer(
     const w = Math.max(1, (box.rect.right - box.rect.left) * scaleX);
     const h = Math.max(1, (box.rect.bottom - box.rect.top) * scaleY);
     let fontSize = Math.max(2, h * 0.92);
-    const measured = font.widthOfTextAtSize(text, fontSize);
-    if (measured > w && measured > 0) fontSize = Math.max(2, fontSize * (w / measured));
+    const estimated = text.length * fontSize * HELV_AVG_ADVANCE;
+    if (estimated > w && estimated > 0) fontSize = Math.max(2, fontSize * (w / estimated));
 
-    page.drawText(text, {
+    spans.push({
       x: box.rect.left * scaleX,
-      y: pageHeight - box.rect.bottom * scaleY + Math.max(0, (h - fontSize) * 0.25),
-      size: fontSize,
-      font,
-      color: rgb(0, 0, 0),
-      opacity: 0,
+      y: pageHeightPt - box.rect.bottom * scaleY + Math.max(0, (h - fontSize) * 0.25),
+      fontSize,
+      text,
     });
   }
+  return spans;
 }
 
 function createOcrClient(wasmBinary: ArrayBuffer): OCRClient {
@@ -112,12 +115,13 @@ function createOcrClient(wasmBinary: ArrayBuffer): OCRClient {
 export async function ocrSearchablePdf(bytes: Uint8Array, opts: OcrPdfOptions = {}, run: RunOptions = {}): Promise<OcrPdfResult> {
   const { scale = 2.5, minConfidence = 0.35, model = 'eng' } = opts;
   reportProgress(run, { phase: 'loading', label: 'Loading OCR engine…' });
-  const [wasmBinary, doc, out] = await Promise.all([
+  const [wasmBinary, doc] = await Promise.all([
     loadWasmBinary(),
-    pdfjsLib.getDocument({ data: bytes }).promise,
-    PDFDocument.load(bytes, { ignoreEncryption: true }),
+    // pdf.js detaches the buffer it's given; clone so the original `bytes`
+    // survive for the wasmAddTextLayer pass at the end.
+    pdfjsLib.getDocument({ data: bytes.slice() }).promise,
   ]);
-  const font = await out.embedFont(StandardFonts.Helvetica);
+  const layerPages: WasmTextLayerPage[] = [];
   const ocr = createOcrClient(wasmBinary);
   const onAbort = () => {
     void ocr.destroy();
@@ -134,6 +138,7 @@ export async function ocrSearchablePdf(bytes: Uint8Array, opts: OcrPdfOptions = 
       throwIfAborted(run.signal);
       reportProgress(run, { phase: 'rendering', label: `Rendering page ${i} of ${doc.numPages} for OCR…`, current: i - 1, total: doc.numPages });
       const srcPage = await doc.getPage(i);
+      const base = srcPage.getViewport({ scale: 1 });
       const viewport = srcPage.getViewport({ scale });
       const canvas = document.createElement('canvas');
       canvas.width = Math.ceil(viewport.width);
@@ -170,7 +175,8 @@ export async function ocrSearchablePdf(bytes: Uint8Array, opts: OcrPdfOptions = 
       await ocr.clearImage();
 
       const accepted = boxes.filter((box) => box.confidence >= minConfidence);
-      drawInvisibleTextLayer(out.getPage(i - 1), font, accepted, canvas.width, canvas.height, minConfidence);
+      const spans = spansForPage(accepted, base.width, base.height, canvas.width, canvas.height, minConfidence);
+      if (spans.length) layerPages.push({ pageIndex: i - 1, spans });
       pageTexts.push(lineText(accepted));
 
       canvas.width = 0;
@@ -187,6 +193,6 @@ export async function ocrSearchablePdf(bytes: Uint8Array, opts: OcrPdfOptions = 
   }
 
   reportProgress(run, { phase: 'saving', label: 'Writing searchable PDF…' });
-  const pdf = await out.save();
+  const pdf = await wasmAddTextLayer(bytes, layerPages);
   return { pdf, text: pageTexts.join('\n\n').trim() };
 }

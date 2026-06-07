@@ -1,10 +1,10 @@
 // "Compress" defaults to Ghostscript/ghostpdl-wasm `pdfwrite`, then keeps the
 // older raster path as an explicit fallback for scanned PDFs or runtime errors.
-import { PDFDocument } from '@cantoo/pdf-lib';
 import loadGhostscript, { type GhostscriptModule } from '@okathira/ghostpdl-wasm';
 import ghostscriptWasmUrl from '@okathira/ghostpdl-wasm/gs.wasm?url';
 import { pdfjsLib } from './pdfjs.js';
 import { abortError, reportProgress, throwIfAborted, type RunOptions } from '../progress.js';
+import { wasmImagePagesToPdf, type WasmImagePage } from '../wasm/core.js';
 
 export interface CompressOptions {
   engine?: 'ghostscript' | 'raster';
@@ -93,7 +93,7 @@ async function rasterCompressPdf(bytes: Uint8Array, opts: CompressOptions = {}, 
   const { scale = 1.5, quality = 0.6 } = opts;
   reportProgress(run, { phase: 'loading', label: 'Opening PDF…' });
   const src = await pdfjsLib.getDocument({ data: bytes }).promise;
-  const out = await PDFDocument.create();
+  const imagePages: WasmImagePage[] = [];
 
   try {
     for (let i = 1; i <= src.numPages; i++) {
@@ -126,9 +126,7 @@ async function rasterCompressPdf(bytes: Uint8Array, opts: CompressOptions = {}, 
         canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('toBlob failed'))), 'image/jpeg', quality),
       );
       const jpeg = new Uint8Array(await blob.arrayBuffer());
-      const img = await out.embedJpg(jpeg);
-      const outPage = out.addPage([pts.width, pts.height]);
-      outPage.drawImage(img, { x: 0, y: 0, width: pts.width, height: pts.height });
+      imagePages.push({ widthPt: pts.width, heightPt: pts.height, bytes: jpeg, type: 'jpg' });
 
       canvas.width = 0;
       canvas.height = 0;
@@ -139,7 +137,7 @@ async function rasterCompressPdf(bytes: Uint8Array, opts: CompressOptions = {}, 
     await src.cleanup();
   }
   reportProgress(run, { phase: 'compressing', label: 'Writing compressed PDF…' });
-  return out.save();
+  return wasmImagePagesToPdf(imagePages);
 }
 
 export async function compressPdf(bytes: Uint8Array, opts: CompressOptions = {}, run: RunOptions = {}): Promise<Uint8Array> {
