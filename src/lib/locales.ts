@@ -105,6 +105,11 @@ const UK_TOOLS: ToolTextMap = {
     tagline: 'Витягніть виділюваний текст з PDF.',
     description: 'Витягніть виділюваний текст з PDF. Скановані документи без текстового шару потребують OCR.',
   },
+  'pdf-to-epub': {
+    name: 'PDF → EPUB',
+    tagline: 'Створіть EPUB з виділюваного тексту PDF.',
+    description: 'Створіть EPUB з адаптивним текстом або fixed-layout EPUB зі сторінок-зображень для сканів і складних макетів.',
+  },
   'pdf-to-docx': {
     name: 'Витягти у Word',
     tagline: 'Збережіть текст PDF як DOCX.',
@@ -292,6 +297,11 @@ const IT_TOOLS: ToolTextMap = {
     name: 'PDF → testo',
     tagline: 'Estrai il testo selezionabile da un PDF.',
     description: 'Estrai il testo selezionabile da un PDF. I PDF scansionati non hanno testo da estrarre senza OCR.',
+  },
+  'pdf-to-epub': {
+    name: 'PDF → EPUB',
+    tagline: 'Crea un EPUB dal testo selezionabile del PDF.',
+    description: 'Crea un EPUB con testo reflowable oppure un EPUB a layout fisso da pagine renderizzate per scansioni e layout complessi.',
   },
   'pdf-to-docx': {
     name: 'Estrai in Word',

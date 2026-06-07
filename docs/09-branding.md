@@ -47,7 +47,7 @@ of overpromising (the honesty *is* the brand). See `docs/00-vision.md`.
 - **Logo:** the cheerful emerald **un-sheared sheep** mark (transparent PNG, theme-adaptive)
   — the file you *keep*. Used as favicon, header mark and OG image.
 - **Icons:** custom 24 px monoline set (`src/lib/icons.ts`), one visual voice across all
-  37 tools.
+  38 tools.
 - Effects kept light; Core Web Vitals stay green.
 
 ## Naming conventions (code)

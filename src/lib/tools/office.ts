@@ -12,6 +12,8 @@ export interface ExtractedTextPage {
   pageNumber: number;
   text: string;
   items: ExtractedTextItem[];
+  width?: number;
+  height?: number;
 }
 
 const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';

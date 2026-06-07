@@ -26,10 +26,10 @@
 - Full AGPL-3.0 text vendored in `LICENSE`; CI (audit/check/build/unit/Rust/E2E) +
   Dependabot
 
-**The 37 tools** (see `docs/02-features.md` for the full table)
+**The 38 tools** (see `docs/02-features.md` for the full table)
 - Organize: merge, split/extract/remove/reorder (Rust path with pdf-lib fallback),
   rotate (Rust path for all pages), N-up, booklet, compare PDFs
-- Convert: images→PDF, PDF→JPG, PDF→PNG, PDF→Text, Extract to Word,
+- Convert: images→PDF, PDF→JPG, PDF→PNG, PDF→Text, PDF→EPUB, Extract to Word,
   Extract to Excel, Extract to PowerPoint, OCR searchable PDF, PDF/A export,
   convert image, HTML/Markdown→PDF
 - Edit: page numbers, Bates numbering, watermark, crop, auto-crop margins, sign,
@@ -53,7 +53,7 @@
 - Mobile-first interactions throughout: pointer events, 44 px targets, bottom-sheet modal
 
 **Quality**
-- 76 vitest unit + 6 cargo + 44 Playwright E2E (incl. a "nothing uploads" network
+- 79 vitest unit + 6 cargo + 47 Playwright E2E (incl. a "nothing uploads" network
   assertion and a WebKit-regression guard for signature persistence) — all green
 - Honest error mapping, focus management, keyboard paths, aria-live statuses
 

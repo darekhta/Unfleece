@@ -23,11 +23,12 @@ const TOOLS = [
   { slug: 'booklet-pdf', name: 'Booklet', icon: 'booklet', cat: 'organize', tag: 'Impose pages for folded booklet printing.' },
   { slug: 'compare-pdfs', name: 'Compare PDFs', icon: 'comparePdf', cat: 'organize', tag: 'Find visual differences between two PDFs.' },
 
-  // Convert (11)
+  // Convert (12)
   { slug: 'images-to-pdf', name: 'Images \u2192 PDF', icon: 'imgToPdf', cat: 'convert', tag: 'Turn JPGs and PNGs into a PDF.', desc: 'Combine your images into a PDF \u2014 one image per page.', feature: true },
   { slug: 'pdf-to-jpg', name: 'PDF \u2192 JPG', icon: 'pdfToJpg', cat: 'convert', tag: 'Save each page as a JPG.' },
   { slug: 'pdf-to-png', name: 'PDF \u2192 PNG', icon: 'pdfToPng', cat: 'convert', tag: 'Save each page as a PNG.' },
   { slug: 'pdf-to-text', name: 'PDF \u2192 Text', icon: 'pdfToText', cat: 'convert', tag: 'Pull selectable text out of a PDF.' },
+  { slug: 'pdf-to-epub', name: 'PDF \u2192 EPUB', icon: 'pdfToEpub', cat: 'convert', tag: 'Create a reflowable or fixed-layout EPUB.' },
   { slug: 'extract-pdf-to-word', name: 'Extract to Word', icon: 'pdfToDocx', cat: 'convert', tag: 'Save selectable PDF text as DOCX.' },
   { slug: 'extract-pdf-to-excel', name: 'Extract to Excel', icon: 'pdfToExcel', cat: 'convert', tag: 'Turn selectable rows into a spreadsheet.' },
   { slug: 'extract-pdf-to-powerpoint', name: 'Extract to PowerPoint', icon: 'pdfToPptx', cat: 'convert', tag: 'Create one text slide per PDF page.' },

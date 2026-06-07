@@ -10,7 +10,7 @@
 ┌──────────────────────────────────────────────────────────────┐
 │  Cloudflare Pages  ($0 · unlimited bandwidth · free SSL)       │
 │                                                                │
-│  Astro 6 static shell — localized URLs per tool (37 live)      │
+│  Astro 6 static shell — localized URLs per tool (38 live)      │
 │   /tools/merge-pdf  /uk/tools/merge-pdf  /it/tools/merge-pdf   │
 │   • static HTML per page (great for SEO + first paint)         │
 │   • Svelte islands split by generic runner vs special editors  │

@@ -69,7 +69,7 @@ privacy-sensitive ops) in pure Rust, and **wrap the ~80% that's a 20-year tar pi
 |---|---|
 | [00 — Vision](docs/00-vision.md) | Problem, mission, principles, audience, differentiators |
 | [01 — Architecture](docs/01-architecture.md) | Client-side WASM model, $0 hosting, data flow, constraints |
-| [02 — Features](docs/02-features.md) | The 37 shipped tools + future candidates from the ~110-function catalog |
+| [02 — Features](docs/02-features.md) | The 38 shipped tools + future candidates from the ~110-function catalog |
 | [03 — Engine (build vs wrap)](docs/03-engine.md) | Rust→WASM strategy, crates, the PDFium trap |
 | [04 — Licensing](docs/04-licensing.md) | AGPL analysis, the open-source decision, per-dep licenses |
 | [05 — Stack](docs/05-stack.md) | Frontend + WASM toolchain, libraries, versions |
@@ -82,7 +82,7 @@ privacy-sensitive ops) in pure Rust, and **wrap the ~80% that's a 20-year tar pi
 ## Status
 
 🟢 **Finished and live at [unfleece.com](https://unfleece.com)** (Cloudflare Pages;
-`unfleece.pages.dev` is the deploy alias). 37 working tools, full test suite green.
+`unfleece.pages.dev` is the deploy alias). 38 working tools, full test suite green.
 Engine v1 is TypeScript (`@cantoo/pdf-lib` + `pdf.js` + Canvas) plus Rust→WASM
 `unfleece-core` for lossless **Optimize PDF**, all-page **Rotate PDF**, and Rust page
 selection for split/extract/remove/reorder, with `tesseract-wasm` for local OCR
@@ -96,8 +96,8 @@ See [`docs/06-roadmap.md`](docs/06-roadmap.md).
 
 | | |
 |---|---|
-| Tools | 37 (organize, convert, edit, optimize, forms, security) |
-| Tests | 76 unit (vitest) · 6 Rust (cargo) · 44 E2E (Playwright/Chromium) |
+| Tools | 38 (organize, convert, edit, optimize, forms, security) |
+| Tests | 79 unit (vitest) · 6 Rust (cargo) · 47 E2E (Playwright/Chromium) |
 | Engines | TypeScript (pdf-lib/pdf.js) + Rust→WASM (lopdf/krilla) + Ghostscript-WASM |
 | Cost | $0/month hosting · ~$10/yr domain |
 

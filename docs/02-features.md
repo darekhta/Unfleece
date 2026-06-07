@@ -1,6 +1,6 @@
 # 02 — Feature Catalog
 
-> **Status: shipped.** Unfleece is live at <https://unfleece.com> with **37 working
+> **Status: shipped.** Unfleece is live at <https://unfleece.com> with **38 working
 > tools**, every one of them running fully client-side. This document lists what
 > shipped (and on which engine), the honest reframes we made, and the candidate pool
 > for future tools.
@@ -12,7 +12,7 @@ Feasibility legend (kept for the future-candidates section):
 
 ---
 
-## Shipped — the 37 live tools
+## Shipped — the 38 live tools
 
 All tools run in the browser; "worker" = Web Worker via Comlink, "browser" = main-thread
 pdf.js/Canvas work, "WASM" = the Rust `unfleece-core` engine.
@@ -37,6 +37,7 @@ pdf.js/Canvas work, "WASM" = the Rust `unfleece-core` engine.
 | PDF → JPG | `/tools/pdf-to-jpg` | pdf.js + Canvas (browser) | per-page render → ZIP |
 | PDF → PNG | `/tools/pdf-to-png` | pdf.js + Canvas (browser) | per-page render → ZIP |
 | PDF → Text | `/tools/pdf-to-text` | pdf.js text API (browser) | honest label — **not** fake "PDF→Word" |
+| PDF → EPUB | `/tools/pdf-to-epub` | pdf.js text API/Canvas + JSZip (browser) | reflowable text EPUB by default; fixed-layout page images for scans/complex layouts |
 | Extract to Word | `/tools/extract-pdf-to-word` | pdf.js text API + styled DOCX ZIP (browser) | text only — no layout claims |
 | Extract to Excel | `/tools/extract-pdf-to-excel` | pdf.js text positions + styled XLSX ZIP (browser) | best-effort rows/columns, honestly labeled |
 | Extract to PowerPoint | `/tools/extract-pdf-to-powerpoint` | pdf.js text API + styled PPTX ZIP (browser) | one slide per page, text only — no layout claims |
@@ -87,6 +88,8 @@ overlay on a shared `PdfStage` (pager + 0.5–3× zoom, mobile pan):
   extraction can't reconstruct layout, so we don't pretend it can.
 - **"Extract to Excel" is best-effort row extraction**, not guaranteed table recovery.
 - **"Extract to PowerPoint" is text-only PPTX**, not high-fidelity PDF→PowerPoint.
+- **"PDF → EPUB" offers two honest modes** — reflowable text when selectable text exists,
+  fixed-layout page images when visual fidelity matters more than adjustable text.
 - **"Compress" uses Ghostscript first and labels its raster fallback** — **Optimize** is
   still the lossless path when users need selectable text guaranteed.
 - **Sign is "a visual signature mark, not a cryptographic e-signature"** — stated in the UI.

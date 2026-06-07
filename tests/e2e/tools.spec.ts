@@ -1,4 +1,6 @@
-import { test, expect, type Page } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
+import { test, expect, type Download, type Page } from '@playwright/test';
+import JSZip from 'jszip';
 import { samplePdfBuffer, protectedPdfBuffer, PNG_1x1, pdfFile, pngFile, tiffFile, textFile, tiff1x1Buffer } from './_helpers';
 
 async function setFiles(page: Page, files: { name: string; mimeType: string; buffer: Buffer }[]) {
@@ -13,7 +15,7 @@ async function setFiles(page: Page, files: { name: string; mimeType: string; buf
     .toBe(true);
 }
 
-async function runAndDownload(page: Page, timeout = 30000): Promise<string> {
+async function runAndGetDownload(page: Page, timeout = 30000): Promise<Download> {
   await expect(page.getByTestId('run-button')).toBeEnabled();
   await page.getByTestId('run-button').click();
   const result = page.getByTestId('result');
@@ -23,7 +25,17 @@ async function runAndDownload(page: Page, timeout = 30000): Promise<string> {
     page.waitForEvent('download'),
     page.getByTestId('download-button').first().click(),
   ]);
-  return download.suggestedFilename();
+  return download;
+}
+
+async function runAndDownload(page: Page, timeout = 30000): Promise<string> {
+  return (await runAndGetDownload(page, timeout)).suggestedFilename();
+}
+
+async function downloadBuffer(download: Download): Promise<Buffer> {
+  const path = await download.path();
+  if (!path) throw new Error('Download path was not available');
+  return readFile(path);
 }
 
 // Simulate a real native file drag-and-drop (Playwright has no first-class file DnD).
@@ -367,6 +379,44 @@ test('PDF to Text extracts the text', async ({ page }) => {
   await page.getByTestId('run-button').click();
   await expect(page.getByTestId('result')).toBeFocused({ timeout: 30000 });
   await expect(page.getByTestId('result-text')).toContainText('Hello Unfleece', { timeout: 30000 });
+});
+
+test('PDF to EPUB creates a reflowable EPUB and never uploads', async ({ page }) => {
+  const posts: string[] = [];
+  page.on('request', (r) => {
+    if (r.method() === 'POST' || r.method() === 'PUT') posts.push(r.url());
+  });
+
+  await page.goto('/tools/pdf-to-epub');
+  await setFiles(page, [pdfFile('doc.pdf', await samplePdfBuffer(1, 'Hello EPUB'))]);
+  await expect(page.getByLabel('Remove repeated headers/footers')).toBeVisible();
+  await expect(page.getByLabel('Render scale')).toHaveCount(0);
+  await page.getByLabel('Title').fill('Hello EPUB');
+  const download = await runAndGetDownload(page);
+  expect(download.suggestedFilename()).toBe('doc.epub');
+  const zip = await JSZip.loadAsync(await downloadBuffer(download));
+  const packageXml = await zip.file('EPUB/package.opf')?.async('string');
+  const pageXml = await zip.file('EPUB/text/page-001.xhtml')?.async('string');
+  expect(packageXml).toContain('<dc:title>Hello EPUB</dc:title>');
+  expect(pageXml).toContain('Hello EPUB');
+  expect(posts, `unexpected upload requests: ${posts.join(', ')}`).toHaveLength(0);
+});
+
+test('PDF to EPUB creates a fixed-layout EPUB', async ({ page }) => {
+  await page.goto('/tools/pdf-to-epub');
+  await setFiles(page, [pdfFile('doc.pdf', await samplePdfBuffer(1, 'Visual EPUB'))]);
+  await page.getByLabel('EPUB mode').selectOption('fixed');
+  await expect(page.getByLabel('Remove repeated headers/footers')).toHaveCount(0);
+  await expect(page.getByLabel('Render scale')).toBeVisible();
+  await page.getByLabel('Render scale').fill('1');
+  const download = await runAndGetDownload(page);
+  expect(download.suggestedFilename()).toBe('doc-fixed.epub');
+  const zip = await JSZip.loadAsync(await downloadBuffer(download));
+  const packageXml = await zip.file('EPUB/package.opf')?.async('string');
+  const pageXml = await zip.file('EPUB/text/page-001.xhtml')?.async('string');
+  expect(packageXml).toContain('<meta property="rendition:layout">pre-paginated</meta>');
+  expect(pageXml).toContain('<meta name="viewport"');
+  expect(zip.file('EPUB/images/page-001.jpg')).toBeTruthy();
 });
 
 test('OCR searchable PDF runs Tesseract and returns a searchable PDF', async ({ page }) => {

@@ -14,6 +14,10 @@
     return String(values[name] ?? '').trim();
   }
 
+  function isVisible(f: OptionField): boolean {
+    return !f.showWhen || values[f.showWhen.name] === f.showWhen.value;
+  }
+
   function rangeError(raw: string, emptyMessage: string): string {
     if (!raw) return emptyMessage;
     if (!pageCount) return '';
@@ -65,20 +69,23 @@
 
   const errors = $derived.by(() => Object.fromEntries(
     fields
+      .filter(isVisible)
       .map((field) => [field.name, validateField(field)] as const)
       .filter(([, error]) => error),
   ));
+
+  const visibleFields = $derived(fields.filter(isVisible));
 
   $effect(() => {
     valid = Object.keys(errors).length === 0;
   });
 </script>
 
-{#if fields.length > 0}
+{#if visibleFields.length > 0}
   <form class="options-panel" aria-label="Tool options" onsubmit={(e) => e.preventDefault()}>
     <h3>Options</h3>
     <div class="options-grid">
-      {#each fields as f (f.name)}
+      {#each visibleFields as f (f.name)}
         {#if f.type === 'checkbox'}
           <div class="span-2">
             <label class="checkbox-row">

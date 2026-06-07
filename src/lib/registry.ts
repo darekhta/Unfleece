@@ -25,15 +25,21 @@ export const CATEGORIES: Record<Category, CategoryMeta> = {
   security: { label: 'Security & Privacy', order: 6, catClass: 'cat-security', hue: 'var(--cat-security)', descriptor: 'Strip what you don’t want to share' },
 };
 
+type OptionBase = {
+  name: string;
+  label: string;
+  showWhen?: { name: string; value: string | number | boolean };
+};
+
 export type OptionField =
-  | { name: string; label: string; type: 'text'; default?: string; placeholder?: string; help?: string; required?: boolean }
-  | { name: string; label: string; type: 'pages'; default?: string; placeholder?: string; help?: string }
-  | { name: string; label: string; type: 'number'; default?: number; min?: number; max?: number; step?: number }
-  | { name: string; label: string; type: 'select'; default: string; options: { value: string; label: string }[] }
-  | { name: string; label: string; type: 'checkbox'; default?: boolean };
+  | (OptionBase & { type: 'text'; default?: string; placeholder?: string; help?: string; required?: boolean })
+  | (OptionBase & { type: 'pages'; default?: string; placeholder?: string; help?: string })
+  | (OptionBase & { type: 'number'; default?: number; min?: number; max?: number; step?: number })
+  | (OptionBase & { type: 'select'; default: string; options: { value: string; label: string }[] })
+  | (OptionBase & { type: 'checkbox'; default?: boolean });
 
 export type Engine = 'worker' | 'browser';
-export type OutputKind = 'pdf' | 'zip' | 'text' | 'image' | 'docx' | 'xlsx' | 'pptx';
+export type OutputKind = 'pdf' | 'zip' | 'text' | 'image' | 'docx' | 'xlsx' | 'pptx' | 'epub';
 
 export interface Tool {
   id: string;
@@ -188,6 +194,45 @@ export const TOOLS: Tool[] = [
     tagline: 'Pull selectable text out of a PDF.',
     description: 'Extract the selectable text from a PDF. (Scanned/image PDFs have no text to extract.)',
     accept: PDF, multiple: false, output: 'text', engine: 'browser',
+  },
+  {
+    id: 'pdf-to-epub', slug: 'pdf-to-epub', name: 'PDF → EPUB', category: 'convert', icon: 'pdfToEpub',
+    tagline: 'Create an EPUB from selectable PDF text.',
+    description: 'Build a reflowable EPUB from selectable PDF text, or a fixed-layout EPUB from rendered pages for scans and complex layouts.',
+    accept: PDF, multiple: false, output: 'epub', engine: 'browser',
+    options: [
+      { name: 'mode', label: 'EPUB mode', type: 'select', default: 'reflowable',
+        options: [
+          { value: 'reflowable', label: 'Reflowable text EPUB' },
+          { value: 'fixed', label: 'Fixed-layout page images' },
+        ] },
+      { name: 'title', label: 'Title', type: 'text', placeholder: 'Defaults to file name' },
+      { name: 'author', label: 'Author', type: 'text', placeholder: 'Optional' },
+      { name: 'language', label: 'Language', type: 'select', default: 'en',
+        options: [
+          { value: 'ar', label: 'Arabic' },
+          { value: 'zh', label: 'Chinese' },
+          { value: 'nl', label: 'Dutch' },
+          { value: 'en', label: 'English' },
+          { value: 'fr', label: 'French' },
+          { value: 'de', label: 'German' },
+          { value: 'hi', label: 'Hindi' },
+          { value: 'it', label: 'Italian' },
+          { value: 'ja', label: 'Japanese' },
+          { value: 'ko', label: 'Korean' },
+          { value: 'pl', label: 'Polish' },
+          { value: 'pt', label: 'Portuguese' },
+          { value: 'ru', label: 'Russian' },
+          { value: 'es', label: 'Spanish' },
+          { value: 'tr', label: 'Turkish' },
+          { value: 'uk', label: 'Ukrainian' },
+        ] },
+      { name: 'removeHeadersFooters', label: 'Remove repeated headers/footers', type: 'checkbox', default: true, showWhen: { name: 'mode', value: 'reflowable' } },
+      { name: 'unwrapParagraphs', label: 'Unwrap hard line breaks', type: 'checkbox', default: true, showWhen: { name: 'mode', value: 'reflowable' } },
+      { name: 'repairHyphenation', label: 'Repair line-end hyphenation', type: 'checkbox', default: true, showWhen: { name: 'mode', value: 'reflowable' } },
+      { name: 'imageScale', label: 'Render scale', type: 'number', default: 1.5, min: 1, max: 3, step: 0.25, showWhen: { name: 'mode', value: 'fixed' } },
+      { name: 'imageQuality', label: 'JPG quality', type: 'number', default: 0.82, min: 0.4, max: 0.95, step: 0.05, showWhen: { name: 'mode', value: 'fixed' } },
+    ],
   },
   {
     id: 'pdf-to-docx', slug: 'extract-pdf-to-word', name: 'Extract to Word', category: 'convert', icon: 'pdfToDocx',

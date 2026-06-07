@@ -8,6 +8,14 @@ import type { ExtractedTextItem, ExtractedTextPage } from '../tools/office.js';
 export interface RenderedPage {
   name: string;
   blob: Blob;
+  /** Page width in PDF/CSS points at scale 1. */
+  width: number;
+  /** Page height in PDF/CSS points at scale 1. */
+  height: number;
+  /** Rendered bitmap width in pixels. */
+  pixelWidth: number;
+  /** Rendered bitmap height in pixels. */
+  pixelHeight: number;
 }
 
 export interface RenderOptions {
@@ -28,6 +36,7 @@ export async function renderToImages(bytes: Uint8Array, opts: RenderOptions = {}
     for (let i = 1; i <= doc.numPages; i++) {
       reportProgress(run, { phase: 'rendering', label: `Rendering page ${i} of ${doc.numPages}…`, current: i - 1, total: doc.numPages });
       const page = await doc.getPage(i);
+      const unitViewport = page.getViewport({ scale: 1 });
       const viewport = page.getViewport({ scale });
       const canvas = document.createElement('canvas');
       canvas.width = Math.ceil(viewport.width);
@@ -49,7 +58,14 @@ export async function renderToImages(bytes: Uint8Array, opts: RenderOptions = {}
       const blob = await new Promise<Blob>((resolve, reject) =>
         canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('toBlob failed'))), type, quality),
       );
-      out.push({ name: `page-${String(i).padStart(3, '0')}.${ext}`, blob });
+      out.push({
+        name: `page-${String(i).padStart(3, '0')}.${ext}`,
+        blob,
+        width: unitViewport.width,
+        height: unitViewport.height,
+        pixelWidth: canvas.width,
+        pixelHeight: canvas.height,
+      });
       canvas.width = 0;
       canvas.height = 0;
       page.cleanup();
@@ -96,6 +112,7 @@ export async function extractTextPages(bytes: Uint8Array, run: RunOptions = {}):
     for (let i = 1; i <= doc.numPages; i++) {
       reportProgress(run, { phase: 'extracting', label: `Extracting text from page ${i} of ${doc.numPages}…`, current: i - 1, total: doc.numPages });
       const page = await doc.getPage(i);
+      const viewport = page.getViewport({ scale: 1 });
       const content = await page.getTextContent();
       const items = (content.items as unknown[]).filter(textItemShape).map((item): ExtractedTextItem => {
         const [, , , , x = 0, y = 0] = item.transform;
@@ -107,7 +124,7 @@ export async function extractTextPages(bytes: Uint8Array, run: RunOptions = {}):
           height: item.height ?? 0,
         };
       });
-      pages.push({ pageNumber: i, text: lineText(items), items });
+      pages.push({ pageNumber: i, text: lineText(items), items, width: viewport.width, height: viewport.height });
       page.cleanup();
       reportProgress(run, { phase: 'extracting', label: `Extracted page ${i} of ${doc.numPages}.`, current: i, total: doc.numPages });
     }

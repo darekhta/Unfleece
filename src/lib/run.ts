@@ -10,6 +10,7 @@ import { compressPdf } from './browser/compress.js';
 import { ocrSearchablePdf } from './browser/ocr.js';
 import { exportPdfA } from './browser/pdfa.js';
 import { OFFICE_MIME, textPagesToDocx, textPagesToPptx, textPagesToXlsx } from './tools/office.js';
+import { EPUB_MIME, fixedPagesToEpub, textPagesToEpub } from './tools/epub.js';
 import { textToPdf } from './tools/documentPdf.js';
 import type { Tool } from './registry.js';
 import { fileMatchesAccept } from './handoff.js';
@@ -24,6 +25,13 @@ const baseName = (name: string) => name.replace(/\.[^.]+$/, '');
 const toBytes = async (f: File) => new Uint8Array(await f.arrayBuffer());
 const pdfBlob = (bytes: Uint8Array) => new Blob([bytes as BlobPart], { type: 'application/pdf' });
 const officeBlob = (bytes: Uint8Array, type: string) => new Blob([bytes as BlobPart], { type });
+const epubBlob = (bytes: Uint8Array) => new Blob([bytes as BlobPart], { type: EPUB_MIME });
+
+function numberOption(value: unknown, fallback: number, min: number, max: number): number {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(max, Math.max(min, n));
+}
 
 function validateInputs(tool: Tool, inputs: File[]) {
   if (inputs.length === 0) throw new Error('Please add a file');
@@ -181,6 +189,34 @@ export async function runTool(tool: Tool, inputs: File[], rawOpts: Record<string
     case 'pdf-to-text': {
       const text = await extractText(await toBytes(first), run);
       return { files: [{ name: `${base}.txt`, blob: new Blob([text], { type: 'text/plain' }) }], text };
+    }
+    case 'pdf-to-epub': {
+      const bytes = await toBytes(first);
+      const title = String(o.title ?? '').trim() || base;
+      const author = String(o.author ?? '').trim();
+      const language = String(o.language ?? 'en').trim() || 'en';
+      const metadata = { title, author, language };
+
+      if (o.mode === 'fixed') {
+        const pages = await renderToImages(bytes, {
+          scale: numberOption(o.imageScale, 1.5, 1, 3),
+          type: 'image/jpeg',
+          quality: numberOption(o.imageQuality, 0.82, 0.4, 0.95),
+        }, run);
+        reportProgress(run, { phase: 'saving', label: 'Writing fixed-layout EPUB…' });
+        const out = await fixedPagesToEpub(pages.map((page, index) => ({ ...page, pageNumber: index + 1 })), metadata);
+        return { files: [{ name: `${base}-fixed.epub`, blob: epubBlob(out) }] };
+      }
+
+      const pages = await extractTextPages(bytes, run);
+      reportProgress(run, { phase: 'saving', label: 'Writing reflowable EPUB…' });
+      const out = await textPagesToEpub(pages, {
+        ...metadata,
+        removeHeadersFooters: o.removeHeadersFooters,
+        unwrapParagraphs: o.unwrapParagraphs,
+        repairHyphenation: o.repairHyphenation,
+      });
+      return { files: [{ name: `${base}.epub`, blob: epubBlob(out) }] };
     }
     case 'pdf-to-docx': {
       const pages = await extractTextPages(await toBytes(first), run);
