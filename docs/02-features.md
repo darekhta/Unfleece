@@ -20,20 +20,20 @@ pdf.js/Canvas work, "WASM" = the Rust `unfleece-core` engine.
 ### Organize
 | Tool | URL | Engine | Notes |
 |---|---|---|---|
-| Merge PDF | `/tools/merge-pdf` | @cantoo/pdf-lib (worker) | multi-file, drag-reorderable list |
-| Split PDF | `/tools/split-pdf` | Rust→WASM `unfleece-core` (lopdf) + pdf-lib fallback | every-page or custom ranges → ZIP |
-| Extract pages | `/tools/extract-pdf-pages` | Rust→WASM `unfleece-core` (lopdf) + pdf-lib fallback | page/range expressions |
-| Remove pages | `/tools/remove-pdf-pages` | Rust→WASM `unfleece-core` (lopdf) + pdf-lib fallback | |
-| Reorder pages | `/tools/reorder-pdf-pages` | Rust→WASM `unfleece-core` (lopdf) + pdf-lib fallback | explicit order list |
-| Rotate PDF | `/tools/rotate-pdf` | Rust→WASM for all pages; @cantoo/pdf-lib for selected pages | lossless `/Rotate`, per-page selection |
-| N-up per sheet | `/tools/n-up-pdf` | @cantoo/pdf-lib (worker) | 2/4/6/9 per A4 sheet |
-| Booklet | `/tools/booklet-pdf` | @cantoo/pdf-lib (worker) | two-up folded-spread imposition with blank padding |
+| Merge PDF | `/tools/merge-pdf` | Rust→WASM `unfleece-core` (worker) | multi-file, drag-reorderable list |
+| Split PDF | `/tools/split-pdf` | Rust→WASM `unfleece-core` (worker) | every-page or custom ranges → ZIP |
+| Extract pages | `/tools/extract-pdf-pages` | Rust→WASM `unfleece-core` (worker) | page/range expressions |
+| Remove pages | `/tools/remove-pdf-pages` | Rust→WASM `unfleece-core` (worker) | |
+| Reorder pages | `/tools/reorder-pdf-pages` | Rust→WASM `unfleece-core` (worker) | explicit order list |
+| Rotate PDF | `/tools/rotate-pdf` | Rust→WASM `unfleece-core` | lossless `/Rotate`, per-page selection |
+| N-up per sheet | `/tools/n-up-pdf` | Rust→WASM `unfleece-core` (worker) | 2/4/6/9 per A4 sheet |
+| Booklet | `/tools/booklet-pdf` | Rust→WASM `unfleece-core` (worker) | two-up folded-spread imposition with blank padding |
 | Compare PDFs | `/tools/compare-pdfs` | pdf.js + Canvas (browser) | visual page-by-page report |
 
 ### Convert
 | Tool | URL | Engine | Notes |
 |---|---|---|---|
-| Images → PDF | `/tools/images-to-pdf` | @cantoo/pdf-lib (worker) | JPG/PNG, fit/A4/Letter |
+| Images → PDF | `/tools/images-to-pdf` | Rust→WASM `unfleece-core` (worker) | JPG/PNG, fit/A4/Letter |
 | PDF → JPG | `/tools/pdf-to-jpg` | pdf.js + Canvas (browser) | per-page render → ZIP |
 | PDF → PNG | `/tools/pdf-to-png` | pdf.js + Canvas (browser) | per-page render → ZIP |
 | PDF → Text | `/tools/pdf-to-text` | pdf.js text API (browser) | honest label — **not** fake "PDF→Word" |
@@ -41,10 +41,10 @@ pdf.js/Canvas work, "WASM" = the Rust `unfleece-core` engine.
 | Extract to Word | `/tools/extract-pdf-to-word` | pdf.js text API + styled DOCX ZIP (browser) | text only — no layout claims |
 | Extract to Excel | `/tools/extract-pdf-to-excel` | pdf.js text positions + styled XLSX ZIP (browser) | best-effort rows/columns, honestly labeled |
 | Extract to PowerPoint | `/tools/extract-pdf-to-powerpoint` | pdf.js text API + styled PPTX ZIP (browser) | one slide per page, text only — no layout claims |
-| OCR searchable PDF | `/tools/ocr-searchable-pdf` | tesseract-wasm + pdf.js + @cantoo/pdf-lib (browser) | English OCR model, invisible searchable text layer |
+| OCR searchable PDF | `/tools/ocr-searchable-pdf` | tesseract-wasm + pdf.js + Rust→WASM text layer (browser) | English OCR model, invisible searchable text layer |
 | PDF/A export | `/tools/export-pdfa` | pdf.js + Rust→WASM `unfleece-core` (krilla) | raster visual PDF/A-2b export, text becomes non-selectable |
 | Convert image | `/tools/convert-image` | Canvas + jSquash + magick-wasm (browser) | PNG/JPEG/WebP plus AVIF/JPEG XL encode; TIFF/PSD/BMP/GIF-style inputs |
-| HTML / Markdown → PDF | `/tools/html-markdown-to-pdf` | @cantoo/pdf-lib | text-focused generator, not a browser layout engine |
+| HTML / Markdown → PDF | `/tools/html-markdown-to-pdf` | Rust→WASM `unfleece-core` | text-focused generator, not a browser layout engine |
 
 ### Edit (incl. the direct-manipulation editors)
 The direct-manipulation editors render the actual page (pdf.js → HiDPI canvas) with a live
@@ -52,13 +52,13 @@ overlay on a shared `PdfStage` (pager + 0.5–3× zoom, mobile pan):
 
 | Tool | URL | Engine | Notes |
 |---|---|---|---|
-| Page numbers | `/tools/add-page-numbers` | editor + worker | tap-a-zone placement, live format preview |
-| Bates numbering | `/tools/bates-numbering` | @cantoo/pdf-lib (worker) | prefix + padded sequential page stamps |
-| Watermark | `/tools/watermark-pdf` | editor + worker | live opacity/angle/size preview |
-| Crop | `/tools/crop-pdf` | editor + worker | 8-handle crop rect + numeric margins |
-| Auto-crop margins | `/tools/auto-crop-pdf` | pdf.js + @cantoo/pdf-lib (browser) | pixel-detects white margins and sets per-page crop boxes |
-| Sign | `/tools/sign-pdf` | editor + main-thread pdf-lib | Draw/Type/Upload modal, **local signature library** (IndexedDB), snap guides, multi-page multi-placement, applied in one pass |
-| Edit metadata | `/tools/edit-pdf-metadata` | @cantoo/pdf-lib (worker) | title/author/subject/keywords round-trip |
+| Page numbers | `/tools/add-page-numbers` | editor + Rust→WASM `unfleece-core` | tap-a-zone placement, live format preview |
+| Bates numbering | `/tools/bates-numbering` | Rust→WASM `unfleece-core` (worker) | prefix + padded sequential page stamps |
+| Watermark | `/tools/watermark-pdf` | editor + Rust→WASM `unfleece-core` | live opacity/angle/size preview |
+| Crop | `/tools/crop-pdf` | editor + Rust→WASM `unfleece-core` | 8-handle crop rect + numeric margins |
+| Auto-crop margins | `/tools/auto-crop-pdf` | pdf.js + Rust→WASM CropBox writer (browser) | pixel-detects white margins and sets per-page crop boxes |
+| Sign | `/tools/sign-pdf` | editor + Rust→WASM image stamping | Draw/Type/Upload modal, **local signature library** (IndexedDB), snap guides, multi-page multi-placement, applied in one pass |
+| Edit metadata | `/tools/edit-pdf-metadata` | Rust→WASM `unfleece-core` (worker) | title/author/subject/keywords round-trip |
 
 ### Optimize
 | Tool | URL | Engine | Notes |
@@ -70,17 +70,17 @@ overlay on a shared `PdfStage` (pager + 0.5–3× zoom, mobile pan):
 ### Forms
 | Tool | URL | Engine | Notes |
 |---|---|---|---|
-| Fill form | `/tools/fill-pdf-form` | @cantoo/pdf-lib | AcroForm detect + fill (no XFA — detected and refused honestly) |
-| Flatten | `/tools/flatten-pdf` | @cantoo/pdf-lib | |
+| Fill form | `/tools/fill-pdf-form` | Rust→WASM `unfleece-core` | AcroForm detect + fill (no XFA — detected and refused honestly) |
+| Flatten | `/tools/flatten-pdf` | Rust→WASM `unfleece-core` | |
 
 ### Security & Privacy
 | Tool | URL | Engine | Notes |
 |---|---|---|---|
-| Remove metadata | `/tools/remove-pdf-metadata` | @cantoo/pdf-lib | clears document-info metadata fields |
-| Protect PDF | `/tools/protect-pdf` | @cantoo/pdf-lib (worker) | Standard Security password encryption + permission flags |
-| Unlock PDF | `/tools/unlock-pdf` | @cantoo/pdf-lib (worker) | opens with password and saves an unencrypted copy |
-| Sanitize PDF | `/tools/sanitize-pdf` | @cantoo/pdf-lib (worker) | strips metadata, scripts, embedded files, page actions, optional annotations/forms |
-| Redact PDF | `/tools/redact-pdf` | pdf.js + Canvas + @cantoo/pdf-lib (browser) | draw boxes, rasterize pages, rebuild image-only PDF |
+| Remove metadata | `/tools/remove-pdf-metadata` | Rust→WASM `unfleece-core` (worker) | clears document-info metadata fields |
+| Protect PDF | `/tools/protect-pdf` | Rust→WASM `unfleece-core` (worker) | Standard Security password encryption + permission flags |
+| Unlock PDF | `/tools/unlock-pdf` | Rust→WASM `unfleece-core` (worker) | opens with password and saves an unencrypted copy |
+| Sanitize PDF | `/tools/sanitize-pdf` | Rust→WASM `unfleece-core` (worker) | strips metadata, scripts, embedded files, page actions, optional annotations/forms |
+| Redact PDF | `/tools/redact-pdf` | pdf.js + Canvas + Rust→WASM image-PDF assembly (browser) | draw boxes, rasterize pages, rebuild image-only PDF |
 
 ## Honest reframes that shipped
 

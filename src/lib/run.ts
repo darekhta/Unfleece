@@ -15,6 +15,7 @@ import { textToPdf } from './tools/documentPdf.js';
 import type { Tool } from './registry.js';
 import { fileMatchesAccept } from './handoff.js';
 import { outputBaseName } from './download.js';
+import { reportError, engineForTool } from './telemetry.js';
 import { abortError, reportProgress, throwIfAborted, type ProgressCallback, type RunOptions } from './progress.js';
 
 export interface RunResult {
@@ -95,6 +96,16 @@ async function withPdfWorker<T>(
  * interactive components and are not routed here.
  */
 export async function runTool(tool: Tool, inputs: File[], rawOpts: Record<string, unknown> = {}, run: RunOptions = {}): Promise<RunResult> {
+  try {
+    return await runToolInner(tool, inputs, rawOpts, run);
+  } catch (e) {
+    // Content-blind error beacon (tool + error class + engine only) — never the file.
+    reportError(tool.id, e, engineForTool(tool.id));
+    throw e;
+  }
+}
+
+async function runToolInner(tool: Tool, inputs: File[], rawOpts: Record<string, unknown>, run: RunOptions): Promise<RunResult> {
   if (tool.special) throw new Error(`${tool.name} uses a dedicated UI`);
   validateInputs(tool, inputs);
   reportProgress(run, { phase: 'loading', label: 'Preparing files…' });

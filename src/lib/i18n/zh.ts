@@ -26,7 +26,7 @@ export const zh: LocaleBundle = {
     github: 'GitHub ↗',
     license: 'AGPL-3.0',
     reportIssue: '报告问题 ↗',
-    noUpload: '不上传',
+    noUpload: '不上传文件',
     noAccount: '无需账户',
     noTracking: '不追踪',
     language: '语言',
@@ -35,7 +35,7 @@ export const zh: LocaleBundle = {
     breadcrumbHome: '首页',
     breadcrumbTools: '工具',
     privateWorkspace: '私密工作区',
-    nothingUploaded: '未上传任何内容',
+    nothingUploaded: '未上传文件',
     howEyebrow: '工作原理',
     howHeading: (toolName) => `如何使用「${toolName}」`,
     steps: [
@@ -45,7 +45,7 @@ export const zh: LocaleBundle = {
     ],
     differenceEyebrow: '诚实的差别',
     differenceHeading: '为什么选 Unfleece，而非宰客软件（fleeceware）',
-    usBullets: ['在浏览器中运行 — 不上传', '免费，无需账户，无需信用卡', '开源（AGPL-3.0）', '没有文件大小付费墙'],
+    usBullets: ['在浏览器中运行 — 不上传文件', '免费，无需账户，无需信用卡', '开源（AGPL-3.0）', '没有文件大小付费墙'],
     themHeading: '典型的宰客软件网站',
     themBullets: ['把你的文件上传到服务器', '$1 试用 → 每周约 $50', '封闭且不透明', '把结果锁在付费墙后'],
     questionsEyebrow: '问题',
@@ -55,11 +55,11 @@ export const zh: LocaleBundle = {
     faqs: (toolName) => [
       {
         q: `${toolName}真的免费吗？`,
-        a: '是的 — 永久免费，无需账户，也没有暗藏陷阱的试用。因为没有任何文件被上传，所以也没有服务器账单需要分摊。',
+        a: '是的 — 永久免费，无需账户，也没有暗藏陷阱的试用。没有文档处理服务器账单需要分摊。',
       },
       {
         q: '我的文件会被上传到什么地方吗？',
-        a: `不会。你的浏览器把文件读入内存，并在你的设备上运行${toolName}。打开 Network（网络）面板看看吧 — 你会发现零上传请求。`,
+        a: `不会。你的浏览器把文件读入内存，并在你的设备上运行${toolName}。打开 Network（网络）面板看看吧 — 你不会看到文件上传请求。如果工具出错且已启用报告，最多只会出现不含内容的 /api/err beacon。`,
       },
       {
         q: '有文件大小或页数限制吗？',
@@ -75,7 +75,7 @@ export const zh: LocaleBundle = {
     heroLine1: '免费、私密的 PDF 工具。',
     heroLine2: '你的文件永远不会离开浏览器。',
     subhead:
-      '合并、拆分、转换、签名与压缩 — 每个工具都完全在你的设备上运行。永久免费，无需账户，不上传。开源，并且坦诚相待。',
+      '合并、拆分、转换、签名与压缩 — 每个工具都完全在你的设备上运行。永久免费，无需账户，不上传文件。开源，并且坦诚相待。',
     browseCta: '浏览工具',
     howCta: '工作原理',
     proof: [
@@ -93,7 +93,7 @@ export const zh: LocaleBundle = {
     proveSteps: [
       { strong: '打开任意工具', rest: '，按 F12 → Network（网络）面板。' },
       { strong: '对一个文件运行它。', rest: ' 盯着请求列表看。' },
-      { strong: '看不到任何上传。', rest: ' 关掉 Wi-Fi — 它照样能用。' },
+      { strong: '看不到文件上传。', rest: ' 关掉 Wi-Fi — 它照样能用。' },
     ],
   },
   tools: {

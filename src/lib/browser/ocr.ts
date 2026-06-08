@@ -3,7 +3,7 @@ import tesseractWorkerUrl from '../../../node_modules/tesseract-wasm/dist/tesser
 import tesseractCoreUrl from '../../../node_modules/tesseract-wasm/dist/tesseract-core.wasm?url';
 import tesseractFallbackCoreUrl from '../../../node_modules/tesseract-wasm/dist/tesseract-core-fallback.wasm?url';
 import { abortError, reportProgress, throwIfAborted, type RunOptions } from '../progress.js';
-import { pdfjsLib } from './pdfjs.js';
+import { loadPdfDocument } from './pdfjs.js';
 import { wasmAddTextLayer, type WasmTextLayerPage, type WasmTextSpan } from '../wasm/core.js';
 
 export interface OcrPdfOptions {
@@ -119,7 +119,7 @@ export async function ocrSearchablePdf(bytes: Uint8Array, opts: OcrPdfOptions = 
     loadWasmBinary(),
     // pdf.js detaches the buffer it's given; clone so the original `bytes`
     // survive for the wasmAddTextLayer pass at the end.
-    pdfjsLib.getDocument({ data: bytes.slice() }).promise,
+    loadPdfDocument(bytes),
   ]);
   const layerPages: WasmTextLayerPage[] = [];
   const ocr = createOcrClient(wasmBinary);

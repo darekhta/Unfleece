@@ -1,6 +1,6 @@
 # 00 — Vision & Positioning
 
-> **Status: shipped.** Unfleece is live at <https://unfleece.com> — 22 client-side
+> **Status: shipped.** Unfleece is live at <https://unfleece.com> — 38 client-side
 > tools, $0 infrastructure, AGPL-3.0. This document records the positioning the product
 > was built to; everything below is in force, not aspiration.
 
@@ -24,14 +24,16 @@ operations can run entirely on the user's own device.** No server required.
 ## The solution
 
 **Unfleece** is a free, open-source PDF toolkit where every operation runs **100% in the
-browser** via WebAssembly. Files are never uploaded. There is no backend to bill for, so
-there's nothing to monetize via a paywall — which is exactly the point.
+browser** via WebAssembly. Files are never uploaded. There is no document-processing
+backend to bill for, so there's nothing to monetize via a paywall — which is exactly the
+point. The one deliberate server touchpoint is a content-blind error beacon, documented
+separately and never carrying file data.
 
 ## Principles
 
 1. **Free forever** — core tools are never gated behind a trial or subscription.
 2. **Private by architecture** — files never leave the device; verifiable in the Network
-   tab, not just promised.
+   tab, with the content-blind error beacon documented as the only server touchpoint.
 3. **Fast & light** — near-zero JS on landing; heavy engines lazy-load per tool.
 4. **Honest** — labels match reality; no fake fidelity, no false "secure".
 5. **Open source** — the running code is auditable. Trust is earned by inspection.
@@ -57,7 +59,7 @@ there's nothing to monetize via a paywall — which is exactly the point.
 | Compliance | Poor | OK (but uploads) | **Strong (no processor)** |
 
 Three differentiators we lead with:
-1. **Privacy by architecture** — "watch the Network tab; nothing uploads."
+1. **Privacy by architecture** — "watch the Network tab; no file uploads."
 2. **No fleeceware** — unlimited, free, no account, no file-size paywall.
 3. **Premium UX, free** — native-quality previews and a glass UI that match paid tools.
 

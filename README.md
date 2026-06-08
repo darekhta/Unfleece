@@ -6,7 +6,7 @@
 
 Unfleece is the honest, open-source antidote to "fleeceware" PDF sites — the ones that
 bait you with a $1 trial and then quietly bill ~$50/week. Every operation runs
-**100% in your browser** via WebAssembly. No uploads. No account. No limits. No catch.
+**100% in your browser** via WebAssembly. No file uploads. No account. No limits. No catch.
 
 > Because the dirty secret of those sites is that 90% of this can happen on your own
 > machine — so it should, and it should be free.
@@ -22,9 +22,10 @@ Unfleece rejects:
 2. **Your files on their servers** — even the honest ones upload your documents to do
    the work, which is a privacy and compliance problem (GDPR / HIPAA / legal).
 
-Unfleece's architecture removes both: there is **no server**. Files are processed
-locally in a Web Worker and never transmitted. You can verify it yourself — open your
-browser's Network tab and watch: nothing uploads.
+Unfleece's architecture removes both: there is **no server that processes documents**.
+Files are processed locally and never transmitted. You can verify it yourself — open
+your browser's Network tab and watch: no document is uploaded. The only deliberate
+server touchpoint is the opt-out, content-blind error beacon documented on the About page.
 
 ## Principles
 
@@ -54,8 +55,8 @@ See [`docs/01-architecture.md`](docs/01-architecture.md) for the full picture.
 | Interactive tools | Svelte islands, hydrated on demand |
 | Compute | Web Workers (Comlink) + lazy Rust → WebAssembly where it is mature |
 | Offline | Installable PWA shell with service-worker caching for static tool pages |
-| PDF engine | **Rust→WASM `unfleece-core`** (merge, split, rotate, crop, metadata, sanitize, watermark, page numbers, image stamping, images→PDF, N-up, booklet, PDF/A, optimize) · `pdf.js` for rendering · Ghostscript-WASM for compression · `@cantoo/pdf-lib` only for forms + protect/unlock |
-| Engine direction | More owned Rust/WASM operations; evaluate wrapped engines only where they beat browser primitives |
+| PDF engine | **Object/generate:** Rust→WASM `unfleece-core` (merge, split, rotate, crop, metadata, sanitize, forms, stamps, images→PDF, N-up, booklet, PDF/A, Office/EPUB, protect/unlock, optimize) · **Render/recognize:** `pdf.js` + Canvas, Tesseract, Ghostscript, jSquash/magick |
+| Engine direction | Keep the object/generate engine owned; wrap render/OCR/compression/codecs where mature browser-safe engines beat rebuilding |
 | Styling | Hand-authored CSS design system, no third-party font requests |
 
 The strategy: **build the ~20% that's our moat** (page-object manipulation, generation,
@@ -83,22 +84,27 @@ privacy-sensitive ops) in pure Rust, and **wrap the ~80% that's a 20-year tar pi
 
 🟢 **Finished and live at [unfleece.com](https://unfleece.com)** (Cloudflare Pages;
 `unfleece.pages.dev` is the deploy alias). 38 working tools, full test suite green.
-Engine v1 is TypeScript (`@cantoo/pdf-lib` + `pdf.js` + Canvas) plus Rust→WASM
-`unfleece-core` for lossless **Optimize PDF**, all-page **Rotate PDF**, and Rust page
-selection for split/extract/remove/reorder, with `tesseract-wasm` for local OCR
-searchable PDFs, `krilla` for PDF/A export, and Ghostscript-WASM for lossy PDF
-compression.
-Sign, crop, watermark, page numbers and redaction are direct-manipulation editors on a real
-page preview (zoom, mobile-first touch interactions), and Sign includes a Draw/Type/Upload
-signature modal with a local, document-independent signature library. The production
-shell has no third-party font requests and ships hardened Cloudflare Pages headers.
-See [`docs/06-roadmap.md`](docs/06-roadmap.md).
+
+**Two engines** (see [`docs/01`](docs/01-architecture.md)): the **object/generate
+engine** is Rust→WASM (`unfleece-core`: lopdf + krilla + RustCrypto + zip) and owns
+every operation that doesn't rasterize a page — merge, split, rotate, crop, metadata,
+sanitize, forms, stamps, images→PDF, N-up/booklet, optimize, PDF/A, Office/EPUB,
+protect/unlock. The **render/recognize engine** is pdf.js + Canvas (+ Tesseract OCR,
+Ghostscript compression, jSquash/magick image codecs) for anything that reads a page
+visually. pdf-lib is **removed from production** (dev-only test oracle). Sign, crop,
+watermark, page numbers and redaction are direct-manipulation editors on a real page
+preview. The shell has no third-party font requests and ships hardened headers.
+
+**Localization (precise state):** static pages — the homepage and all 38 tool pages —
+plus the chrome (header/footer/switcher) are localized into **12 languages** (incl.
+RTL Arabic), with system-language→geo auto-detect. The interactive tool runner and
+editors are still English; the About page is English-only. See [`docs/06`](docs/06-roadmap.md).
 
 | | |
 |---|---|
 | Tools | 38 (organize, convert, edit, optimize, forms, security) |
-| Tests | 165 unit (vitest, through real WASM) · 230 Rust (cargo) · 47 E2E (Playwright/Chromium) |
-| Engines | **Rust→WASM core (lopdf/krilla) — all object-graph ops** · pdf.js (render) · Ghostscript-WASM (compress) · pdf-lib (forms/protect only) |
+| Tests | 178 unit (vitest, real WASM) · 568 Rust (cargo, incl. pack-conformance + proptest) · 50 E2E (Playwright/Chromium) |
+| Engines | **Object/generate: Rust→WASM `unfleece-core`** (lopdf·krilla·RustCrypto·zip) · **Render/recognize: pdf.js + Canvas**, Tesseract, Ghostscript, jSquash/magick (pdf-lib removed from prod — dev-only oracle) |
 | Cost | $0/month hosting · ~$10/yr domain |
 
 ## Getting started

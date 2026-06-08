@@ -1,7 +1,7 @@
 // pdf.js based rendering. Runs on the main thread; pdf.js offloads parsing to
 // its own worker so the UI stays responsive. Browser-only (uses <canvas>),
 // so this is covered by Playwright E2E rather than Node unit tests.
-import { pdfjsLib } from './pdfjs.js';
+import { loadPdfDocument } from './pdfjs.js';
 import { abortError, reportProgress, throwIfAborted, type RunOptions } from '../progress.js';
 import type { ExtractedTextItem, ExtractedTextPage } from '../tools/office.js';
 
@@ -29,7 +29,7 @@ export async function renderToImages(bytes: Uint8Array, opts: RenderOptions = {}
   const { scale = 2, type = 'image/png', quality = 0.85 } = opts;
   const ext = type === 'image/png' ? 'png' : 'jpg';
   reportProgress(run, { phase: 'loading', label: 'Opening PDF…' });
-  const doc = await pdfjsLib.getDocument({ data: bytes }).promise;
+  const doc = await loadPdfDocument(bytes);
   const out: RenderedPage[] = [];
 
   try {
@@ -106,7 +106,7 @@ function lineText(items: ExtractedTextItem[]): string {
 /** Extract selectable text and coarse text positions from every page. */
 export async function extractTextPages(bytes: Uint8Array, run: RunOptions = {}): Promise<ExtractedTextPage[]> {
   reportProgress(run, { phase: 'loading', label: 'Opening PDF…' });
-  const doc = await pdfjsLib.getDocument({ data: bytes }).promise;
+  const doc = await loadPdfDocument(bytes);
   const pages: ExtractedTextPage[] = [];
   try {
     for (let i = 1; i <= doc.numPages; i++) {
@@ -142,7 +142,7 @@ export async function extractText(bytes: Uint8Array, run: RunOptions = {}): Prom
 
 /** Page sizes in PDF points (for the compress tool to preserve dimensions). */
 export async function pagePointSizes(bytes: Uint8Array): Promise<{ width: number; height: number }[]> {
-  const doc = await pdfjsLib.getDocument({ data: bytes }).promise;
+  const doc = await loadPdfDocument(bytes);
   const sizes: { width: number; height: number }[] = [];
   try {
     for (let i = 1; i <= doc.numPages; i++) {

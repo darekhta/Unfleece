@@ -7,7 +7,7 @@ describe('friendlyError', () => {
 
     expect(error).toEqual({
       title: 'Invalid PDF',
-      message: 'This does not look like a valid PDF. Choose a different PDF and try again. Nothing left your device.',
+      message: 'This does not look like a valid PDF. Choose a different PDF and try again. No file left your device.',
     });
   });
 
@@ -16,7 +16,7 @@ describe('friendlyError', () => {
 
     expect(error.title).toBe('Password-protected PDF');
     expect(error.message).toContain('Use Unlock PDF with the password');
-    expect(error.message).toContain('Nothing left your device');
+    expect(error.message).toContain('No file left your device');
   });
 
   it('keeps actionable validation messages intact', () => {
@@ -42,7 +42,7 @@ describe('friendlyError', () => {
 
     expect(error).toEqual({
       title: 'Could not process file',
-      message: 'We could not finish this file. Try another file or a smaller document. Nothing left your device.',
+      message: 'We could not finish this file. Try another file or a smaller document. No file left your device.',
     });
   });
 });

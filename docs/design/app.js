@@ -102,7 +102,7 @@
       '<span class="dz-icon" data-icon="upload"></span>' +
       '<span class="dz-primary">Drop PDF' + (multi ? 's' : '') + ' here, or click to choose</span>' +
       '<span class="dz-types">PDF only \u00b7 ' + (multi ? 'single or multiple' : 'one file') + '</span>' +
-      '<span class="dz-privacy">' + ic('lock') + ' Files stay on your device \u2014 nothing is uploaded.</span>' +
+      '<span class="dz-privacy">' + ic('lock') + ' Files stay on your device \u2014 no file upload.</span>' +
       '</button>';
   }
   function fileList(arr) {
@@ -226,7 +226,7 @@
       case 'error':
         return steps(2) + '<div class="runner-body">' + dropzone(true, true) + fileList(SAMPLE_FILES) +
           '<div class="alert alert-error" role="alert"><span class="ico" data-icon="alert"></span>' +
-          '<div class="a-body"><strong>We couldn\u2019t open this PDF.</strong><p>It may be damaged or password-protected. Nothing left your device \u2014 unlock it in your reader and try again.</p></div></div>' +
+          '<div class="a-body"><strong>We couldn\u2019t open this PDF.</strong><p>It may be damaged or password-protected. No file left your device \u2014 unlock it in your reader and try again.</p></div></div>' +
           '<div class="action-row"><button class="btn btn-ghost" id="startover">Start over</button></div></div>';
 
       case 'largefile':

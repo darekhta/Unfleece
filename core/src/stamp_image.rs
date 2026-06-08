@@ -33,6 +33,8 @@ use std::collections::{BTreeMap, BTreeSet};
 use lopdf::content::{Content, Operation};
 use lopdf::{dictionary, Dictionary, Document, Object, ObjectId, Stream};
 
+use crate::content::wrap_stream_ids;
+use crate::imagexobject::flate_compress;
 use crate::pack::PackReader;
 use crate::util::{materialize_inherited_page_attrs, save_compact};
 
@@ -211,24 +213,6 @@ pub fn stamp_images_native(data: &[u8], pack: &[u8]) -> Result<Vec<u8>, String> 
     save_compact(doc).map_err(|e| e.to_string())
 }
 
-fn content_bytes(operations: Vec<Operation>) -> Result<Vec<u8>, String> {
-    let body = Content { operations }.encode().map_err(|e| e.to_string())?;
-    let mut bytes = Vec::with_capacity(body.len() + 2);
-    bytes.push(b'\n');
-    bytes.extend(body);
-    bytes.push(b'\n');
-    Ok(bytes)
-}
-
-fn wrap_stream_ids(doc: &mut Document) -> Result<(ObjectId, ObjectId), String> {
-    let push = content_bytes(vec![Operation::new("q", vec![])])?;
-    let pop = content_bytes(vec![Operation::new("Q", vec![])])?;
-    Ok((
-        doc.add_object(Stream::new(dictionary! {}, push)),
-        doc.add_object(Stream::new(dictionary! {}, pop)),
-    ))
-}
-
 fn parse_pack(pack: &[u8]) -> Result<Vec<Stamp<'_>>, String> {
     let mut r = PackReader::new(pack);
     r.expect_magic(STAMP_PACK_MAGIC)?;
@@ -278,14 +262,6 @@ fn validate(stamps: &[Stamp], page_count: usize) -> Result<(), String> {
     Ok(())
 }
 
-/// Zlib-compress raw sample data for a FlateDecode stream.
-fn flate(data: &[u8]) -> Result<Vec<u8>, String> {
-    use std::io::Write;
-    let mut enc = flate2::write::ZlibEncoder::new(Vec::new(), flate2::Compression::default());
-    enc.write_all(data).map_err(|e| e.to_string())?;
-    enc.finish().map_err(|e| e.to_string())
-}
-
 /// Decode a PNG and embed it as a FlateDecode RGB image XObject, splitting any
 /// alpha channel into an `/SMask`. Returns `(xobject_id, pixel_w, pixel_h)`.
 fn embed_png(doc: &mut Document, bytes: &[u8]) -> Result<(ObjectId, u32, u32), String> {
@@ -325,7 +301,7 @@ fn embed_png(doc: &mut Document, bytes: &[u8]) -> Result<(ObjectId, u32, u32), S
                 "ColorSpace" => "DeviceGray",
                 "Filter" => "FlateDecode",
             },
-            flate(&alpha)?,
+            flate_compress(&alpha)?,
         ));
         dict.set("SMask", Object::Reference(smask));
         rgb
@@ -333,7 +309,7 @@ fn embed_png(doc: &mut Document, bytes: &[u8]) -> Result<(ObjectId, u32, u32), S
         img.into_rgb8().into_raw()
     };
 
-    let id = doc.add_object(Stream::new(dict, flate(&rgb)?));
+    let id = doc.add_object(Stream::new(dict, flate_compress(&rgb)?));
     Ok((id, width, height))
 }
 

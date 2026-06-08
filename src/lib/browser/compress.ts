@@ -2,7 +2,7 @@
 // older raster path as an explicit fallback for scanned PDFs or runtime errors.
 import loadGhostscript, { type GhostscriptModule } from '@okathira/ghostpdl-wasm';
 import ghostscriptWasmUrl from '@okathira/ghostpdl-wasm/gs.wasm?url';
-import { pdfjsLib } from './pdfjs.js';
+import { loadPdfDocument } from './pdfjs.js';
 import { abortError, reportProgress, throwIfAborted, type RunOptions } from '../progress.js';
 import { wasmImagePagesToPdf, type WasmImagePage } from '../wasm/core.js';
 
@@ -92,7 +92,7 @@ async function ghostscriptCompressPdf(bytes: Uint8Array, opts: CompressOptions =
 async function rasterCompressPdf(bytes: Uint8Array, opts: CompressOptions = {}, run: RunOptions = {}): Promise<Uint8Array> {
   const { scale = 1.5, quality = 0.6 } = opts;
   reportProgress(run, { phase: 'loading', label: 'Opening PDF…' });
-  const src = await pdfjsLib.getDocument({ data: bytes }).promise;
+  const src = await loadPdfDocument(bytes);
   const imagePages: WasmImagePage[] = [];
 
   try {

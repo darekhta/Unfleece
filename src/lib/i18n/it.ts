@@ -27,7 +27,7 @@ export const it: LocaleBundle = {
     github: 'GitHub ↗',
     license: 'AGPL-3.0',
     reportIssue: 'Segnala un problema ↗',
-    noUpload: 'Nessun upload',
+    noUpload: 'Nessun upload di file',
     noAccount: 'Nessun account',
     noTracking: 'Nessun tracciamento',
     language: 'Lingua',
@@ -36,7 +36,7 @@ export const it: LocaleBundle = {
     breadcrumbHome: 'Home',
     breadcrumbTools: 'Strumenti',
     privateWorkspace: 'Area privata',
-    nothingUploaded: 'Nessun upload',
+    nothingUploaded: 'Nessun upload di file',
     howEyebrow: 'Come funziona',
     howHeading: (toolName) => `Come usare ${toolName}`,
     steps: [
@@ -46,7 +46,7 @@ export const it: LocaleBundle = {
     ],
     differenceEyebrow: 'La differenza onesta',
     differenceHeading: 'Perché Unfleece invece dei siti fleeceware',
-    usBullets: ['Funziona nel browser — nessun upload', 'Gratis, senza account, senza carta', 'Open source (AGPL-3.0)', 'Nessun paywall sulla dimensione dei file'],
+    usBullets: ['Funziona nel browser — nessun upload di file', 'Gratis, senza account, senza carta', 'Open source (AGPL-3.0)', 'Nessun paywall sulla dimensione dei file'],
     themHeading: 'Tipico sito fleeceware',
     themBullets: ['Carica il tuo file su un server', 'Prova da $1 → circa $50 a settimana', 'Chiuso e opaco', 'Blocca il risultato dietro pagamento'],
     questionsEyebrow: 'Domande',
@@ -56,11 +56,11 @@ export const it: LocaleBundle = {
     faqs: (toolName) => [
       {
         q: `${toolName} e davvero gratis?`,
-        a: "Sì — gratis per sempre, senza account e senza prove che diventano addebiti. Non c'è un server da pagare perché nulla viene caricato.",
+        a: "Sì — gratis per sempre, senza account e senza prove che diventano addebiti. Non c'è un server di elaborazione documenti da pagare.",
       },
       {
         q: 'I miei file vengono caricati da qualche parte?',
-        a: `No. Il browser legge il file in memoria ed esegue ${toolName} sul tuo dispositivo. Apri la scheda Network: non vedrai richieste di upload.`,
+        a: `No. Il browser legge il file in memoria ed esegue ${toolName} sul tuo dispositivo. Apri la scheda Network: non vedrai richieste di upload del file. Se uno strumento va in errore e i report sono attivi, può apparire solo un beacon /api/err cieco al contenuto.`,
       },
       {
         q: "C'e un limite di dimensione o pagine?",
@@ -76,7 +76,7 @@ export const it: LocaleBundle = {
     heroLine1: 'Strumenti PDF gratuiti e privati.',
     heroLine2: 'I tuoi file non lasciano mai il browser.',
     subhead:
-      'Unisci, dividi, converti, firma e comprimi: ogni strumento funziona interamente sul tuo dispositivo. Gratis per sempre, senza account e senza upload. Open source, e onesti al riguardo.',
+      'Unisci, dividi, converti, firma e comprimi: ogni strumento funziona interamente sul tuo dispositivo. Gratis per sempre, senza account e senza upload di file. Open source, e onesti al riguardo.',
     browseCta: 'Esplora gli strumenti',
     howCta: 'Come funziona',
     proof: [
@@ -94,7 +94,7 @@ export const it: LocaleBundle = {
     proveSteps: [
       { strong: 'Apri uno strumento qualsiasi', rest: ' e premi F12 → scheda Network.' },
       { strong: 'Usalo su un file.', rest: " Guarda l'elenco delle richieste." },
-      { strong: 'Vedrai che non si carica nulla.', rest: ' Spegni il Wi‑Fi: funziona lo stesso.' },
+      { strong: 'Nessun upload del file.', rest: ' Spegni il Wi‑Fi: funziona lo stesso.' },
     ],
   },
   tools: {

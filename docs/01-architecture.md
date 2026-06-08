@@ -18,10 +18,10 @@
 │        user drops a file ─┐                                    │
 │                           ▼                                    │
 │   ┌────────────── Web Worker (Comlink) ──────────────────┐    │
-│   │  lazy-load the engine for THIS tool                    │    │
-│   │   • JS:     pdf-lib / pdf.js / Canvas / jszip          │    │
-│   │   • WASM:   lopdf / krilla / Ghostscript / Tesseract   │    │
-│   │  process page-by-page; return bytes to main thread    │    │
+│   │  object/generate engine: lopdf / krilla / crypto / zip │    │
+│   └──────────────────────────────────────────────────────┘    │
+│   ┌────────────── Browser render paths ──────────────────┐    │
+│   │  pdf.js worker + Canvas islands + Tesseract / GS       │    │
 │   └──────────────────────────────────────────────────────┘    │
 │                           │                                    │
 │              download result ◄┘   (Blob, never uploaded)       │
@@ -39,8 +39,54 @@ The product promise ("free + private") and the technical design are the same dec
 Because all work happens in the browser:
 
 - **No compute cost** → nothing to bill for → no paywall needed.
-- **No upload** → privacy is structural, not policy.
+- **No file upload** → privacy is structural, not policy.
 - **Infinite horizontal scale** → every user brings their own CPU.
+
+## Two engines and the seam between them
+
+Unfleece is honestly a **two-engine** system, and the boundary between them is a
+first-class part of the architecture (it is where this project's nastiest bugs
+have lived):
+
+1. **The object / generate engine — Rust → WebAssembly (`unfleece-core`).**
+   Everything that manipulates the PDF object graph or *generates* a container:
+   merge, split, rotate, crop, metadata, sanitize, forms, page numbers,
+   watermark, image stamping, images→PDF, N-up/booklet, optimize, PDF/A
+   (krilla), Office/EPUB ZIPs, and Standard-Security encrypt/decrypt. Pure,
+   host-testable, no DOM.
+
+2. **The render / recognize engine — pdf.js + Canvas (+ Tesseract, Ghostscript).**
+   Everything that needs to *rasterize a page or read its visual content*:
+   page rendering, text extraction, OCR, visual compare, redaction burn-in,
+   auto-crop detection, raster compression, image transcoding. This half needs
+   the browser (Canvas/OffscreenCanvas) and cannot move into Rust.
+
+**The seam** is where bytes cross from one engine to the other. pdf.js *detaches*
+the `ArrayBuffer` it is given, so handing it a buffer that the Rust core later
+reuses empties it — the bug class behind the OCR detached-buffer issue. The seam
+is therefore funneled through a single clone-safe doorway, `loadPdfDocument()` /
+`dataForPdfjs()` in `src/lib/browser/pdfjs.ts`, which always clones; no call site
+hands pdf.js a buffer it does not own. The invariant is pinned by
+`tests/unit/seam.test.ts`.
+
+## Threading model (what actually runs where)
+
+Being precise, because earlier docs over-claimed "all heavy work in a Web Worker":
+
+- **pdf.js parsing** runs in pdf.js's own dedicated worker (off the main thread).
+- **The object/generate engine** (`unfleece-core` WASM) runs inside the app's
+  **Comlink Web Worker** (`pdf.worker.ts`) for the registry-driven tools, so
+  object-graph work never blocks the UI.
+- **Rasterization (Canvas) and the render-engine assemblers** (OCR, compare,
+  redact, auto-crop, raster-compress, render-to-images) currently run on the
+  **main thread / island**. They are chunked page-by-page and `await` between
+  pages so the UI stays responsive and Cancel works, but a very large scan can
+  still cost main-thread time. Tesseract OCR recognition runs in its own worker.
+
+This is a deliberate, documented state — not "everything is in a worker."
+**Planned next step:** move rasterization into a worker via `OffscreenCanvas`
+(pdf.js supports rendering to an `OffscreenCanvas` from a worker), starting with
+the shared `renderToImages` path.
 
 ## Layers
 
@@ -49,10 +95,11 @@ Because all work happens in the browser:
 | Host | **Cloudflare Pages** (free) | Unlimited bandwidth/requests; free SSL; free `*.pages.dev` |
 | Shell | **Astro 6** static | One static, SEO-indexable route per tool; ships HTML by default |
 | Interactivity | **Svelte 5 islands**, `client:load` | Tool widgets hydrate as focused islands; generic runner and special editors are split |
-| Off-thread compute | **Web Worker** + **Comlink** | Keeps UI responsive during render/OCR/compress |
+| Off-thread compute | **Web Worker** + **Comlink** | Hosts the Rust→WASM object/generate engine; pdf.js + Tesseract use their own workers. Rasterization is still main-thread (see "Threading model"). |
 | Offline shell | **PWA manifest + Service Worker** | Installable app; static pages and assets are cached from the sitemap for offline use |
 | Engine loading | `import()` + worker/module chunks | 0 KB heavy engine cost until a tool needs it; HTTP-cached after |
-| Engines today | `@cantoo/pdf-lib`, `pdf.js`, Canvas, `jszip`, `lopdf` WASM optimize/rotate, `krilla`, `tesseract-wasm`, Ghostscript-WASM | See `docs/03-engine.md` for build-vs-wrap strategy |
+| Object/generate engine | **`unfleece-core`** (Rust→WASM: lopdf + krilla + RustCrypto + zip + image) | Owns every non-rendering operation; see `docs/03-engine.md` |
+| Render/recognize engine | **pdf.js** + Canvas, **tesseract-wasm**, **Ghostscript-WASM**, jSquash/magick-wasm | Rasterize, extract, OCR, compress, image codecs (pdf-lib is gone from production — dev-only test oracle) |
 | Oversized assets | **Cloudflare R2** (zero egress) | Reserved for extra OCR lang packs and future heavier engines; current large WASM engines are lazy app assets |
 
 ## Hosting constraints to design around
@@ -80,8 +127,9 @@ client-side and **must be handled in the WASM/JS layer**:
   DPI, use `OffscreenCanvas`, dispose canvases, prefer PDFium Pixmap→PNG over `<canvas>`
   for high-DPI.
 - **Mitigations:** all heavy PDF object work in a Web Worker (a crash kills the worker,
-  not the page); detect input size up front and warn above large local-memory thresholds;
-  process page-by-page; terminate OCR workers between jobs to reclaim heap.
+  not the page); raster paths chunk page-by-page and yield; detect input size up front
+  and warn above large local-memory thresholds; terminate OCR workers between jobs to
+  reclaim heap.
 
 Full risk register + mitigations: `docs/08-risks.md`.
 
@@ -94,7 +142,8 @@ server (high-fidelity Office conversion), we don't build it — we reframe or dr
 
 ## Privacy & security posture
 
-- No file or file-content ever transmitted. Any analytics must be content-blind.
+- No file or file-content ever transmitted. The only telemetry is the opt-out,
+  content-blind error beacon documented in ADR-016.
 - Immutable caching for built assets.
 - Production `_headers` set CSP, `Referrer-Policy: no-referrer`, `X-Frame-Options: DENY`,
   `Cross-Origin-Opener-Policy: same-origin`, `Cross-Origin-Resource-Policy: same-origin`,

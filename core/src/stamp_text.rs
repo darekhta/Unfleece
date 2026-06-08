@@ -21,10 +21,13 @@
 //! is first wrapped in `q`/`Q` so unbalanced graphics state in the original
 //! streams cannot displace the stamp (mirrors pdf-lib's page normalization).
 
-use lopdf::content::{Content, Operation};
-use lopdf::{dictionary, Dictionary, Document, Object, ObjectId, Stream};
+use lopdf::content::Operation;
+use lopdf::{dictionary, Document, Object, ObjectId};
 use serde::Deserialize;
 
+use crate::content::{
+    add_content_stream, add_resource_entry, append_to_page_contents, wrap_stream_ids,
+};
 use crate::util::{effective_media_box, materialize_inherited_page_attrs, save_compact};
 
 /// The 6 supported stamp zones.
@@ -392,38 +395,8 @@ fn pad_number(n: i64, pad_to: f64) -> String {
 }
 
 // ---------------------------------------------------------------------------
-// lopdf plumbing
+// Text stamp operators (content/resource plumbing lives in `crate::content`)
 // ---------------------------------------------------------------------------
-
-/// Encode a list of content operations to stream bytes.
-///
-/// The bytes are padded with leading/trailing newlines: streams in a
-/// `/Contents` array are logically concatenated, and without the padding a
-/// stream ending in `Q` followed by one starting with `q` would fuse into a
-/// single bogus `Qq` token (lopdf concatenates them byte-for-byte on read).
-fn content_bytes(operations: Vec<Operation>) -> Result<Vec<u8>, String> {
-    let body = Content { operations }.encode().map_err(|e| e.to_string())?;
-    let mut bytes = Vec::with_capacity(body.len() + 2);
-    bytes.push(b'\n');
-    bytes.extend(body);
-    bytes.push(b'\n');
-    Ok(bytes)
-}
-
-/// Add a content stream object holding `operations`; returns its id.
-fn add_content_stream(doc: &mut Document, operations: Vec<Operation>) -> Result<ObjectId, String> {
-    Ok(doc.add_object(Stream::new(dictionary! {}, content_bytes(operations)?)))
-}
-
-/// Shared `q` / `Q` wrapper streams used to bracket pre-existing page content.
-fn wrap_stream_ids(doc: &mut Document) -> Result<(ObjectId, ObjectId), String> {
-    let push = content_bytes(vec![Operation::new("q", vec![])])?;
-    let pop = content_bytes(vec![Operation::new("Q", vec![])])?;
-    Ok((
-        doc.add_object(Stream::new(dictionary! {}, push)),
-        doc.add_object(Stream::new(dictionary! {}, pop)),
-    ))
-}
 
 /// The self-contained operator sequence for one text stamp, mirroring
 /// pdf-lib's `drawText`: `q [gs] BT rg Tf Tm Tj ET Q`.
@@ -467,205 +440,6 @@ fn text_stamp_ops(
     ops
 }
 
-/// Where a page's `/Resources` dictionary lives.
-enum ResourcesLoc {
-    /// Inline dictionary in the page dict (created when missing).
-    Inline,
-    /// Indirect object referenced from the page dict.
-    Indirect(ObjectId),
-}
-
-fn locate_resources(doc: &mut Document, page_id: ObjectId) -> Result<ResourcesLoc, String> {
-    enum Found {
-        Inline,
-        Indirect(ObjectId),
-        Missing,
-    }
-    let found = {
-        let dict = doc.get_dictionary(page_id).map_err(|e| e.to_string())?;
-        match dict.get(b"Resources") {
-            Ok(Object::Reference(id)) => Found::Indirect(*id),
-            Ok(Object::Dictionary(_)) => Found::Inline,
-            Ok(_) => return Err("Page /Resources is not a dictionary".to_string()),
-            Err(_) => Found::Missing,
-        }
-    };
-    match found {
-        Found::Inline => Ok(ResourcesLoc::Inline),
-        Found::Indirect(id) => {
-            doc.get_dictionary(id)
-                .map_err(|_| "Page /Resources reference is not a dictionary".to_string())?;
-            Ok(ResourcesLoc::Indirect(id))
-        }
-        Found::Missing => {
-            doc.get_object_mut(page_id)
-                .map_err(|e| e.to_string())?
-                .as_dict_mut()
-                .map_err(|e| e.to_string())?
-                .set("Resources", Dictionary::new());
-            Ok(ResourcesLoc::Inline)
-        }
-    }
-}
-
-fn resources_dict<'a>(
-    doc: &'a Document,
-    page_id: ObjectId,
-    loc: &ResourcesLoc,
-) -> Result<&'a Dictionary, String> {
-    let obj = match loc {
-        ResourcesLoc::Inline => doc
-            .get_dictionary(page_id)
-            .map_err(|e| e.to_string())?
-            .get(b"Resources")
-            .map_err(|e| e.to_string())?,
-        ResourcesLoc::Indirect(id) => doc.get_object(*id).map_err(|e| e.to_string())?,
-    };
-    obj.as_dict().map_err(|e| e.to_string())
-}
-
-fn resources_dict_mut<'a>(
-    doc: &'a mut Document,
-    page_id: ObjectId,
-    loc: &ResourcesLoc,
-) -> Result<&'a mut Dictionary, String> {
-    let obj = match loc {
-        ResourcesLoc::Inline => doc
-            .get_object_mut(page_id)
-            .map_err(|e| e.to_string())?
-            .as_dict_mut()
-            .map_err(|e| e.to_string())?
-            .get_mut(b"Resources")
-            .map_err(|e| e.to_string())?,
-        ResourcesLoc::Indirect(id) => doc.get_object_mut(*id).map_err(|e| e.to_string())?,
-    };
-    obj.as_dict_mut().map_err(|e| e.to_string())
-}
-
-/// Insert `value` under a fresh key in the `category` (`Font` / `ExtGState`)
-/// sub-dictionary of the page's Resources, following indirect references and
-/// creating missing dictionaries. Returns the chosen resource key.
-fn add_resource_entry(
-    doc: &mut Document,
-    page_id: ObjectId,
-    category: &str,
-    base_key: &str,
-    value: Object,
-) -> Result<String, String> {
-    let res_loc = locate_resources(doc, page_id)?;
-
-    /// Where the category sub-dictionary lives.
-    enum CatLoc {
-        Inline,
-        Indirect(ObjectId),
-    }
-    let cat_loc = {
-        let found = match resources_dict(doc, page_id, &res_loc)?.get(category.as_bytes()) {
-            Ok(Object::Reference(id)) => Some(CatLoc::Indirect(*id)),
-            Ok(Object::Dictionary(_)) => Some(CatLoc::Inline),
-            Ok(_) => {
-                return Err(format!(
-                    "Page /{category} resource entry is not a dictionary"
-                ))
-            }
-            Err(_) => None,
-        };
-        match found {
-            Some(CatLoc::Indirect(id)) => {
-                doc.get_dictionary(id).map_err(|_| {
-                    format!("Page /{category} resource reference is not a dictionary")
-                })?;
-                CatLoc::Indirect(id)
-            }
-            Some(CatLoc::Inline) => CatLoc::Inline,
-            None => {
-                resources_dict_mut(doc, page_id, &res_loc)?.set(category, Dictionary::new());
-                CatLoc::Inline
-            }
-        }
-    };
-
-    // Pick a key that does not collide with existing entries.
-    let existing: Vec<Vec<u8>> = {
-        let cat = match &cat_loc {
-            CatLoc::Inline => resources_dict(doc, page_id, &res_loc)?
-                .get(category.as_bytes())
-                .and_then(Object::as_dict)
-                .map_err(|e| e.to_string())?,
-            CatLoc::Indirect(id) => doc.get_dictionary(*id).map_err(|e| e.to_string())?,
-        };
-        cat.iter().map(|(k, _)| k.to_vec()).collect()
-    };
-    let mut key = base_key.to_string();
-    let mut suffix = 0u32;
-    while existing.iter().any(|k| k.as_slice() == key.as_bytes()) {
-        suffix += 1;
-        key = format!("{base_key}{suffix}");
-    }
-
-    let cat = match &cat_loc {
-        CatLoc::Inline => resources_dict_mut(doc, page_id, &res_loc)?
-            .get_mut(category.as_bytes())
-            .map_err(|e| e.to_string())?
-            .as_dict_mut()
-            .map_err(|e| e.to_string())?,
-        CatLoc::Indirect(id) => doc
-            .get_object_mut(*id)
-            .map_err(|e| e.to_string())?
-            .as_dict_mut()
-            .map_err(|e| e.to_string())?,
-    };
-    cat.set(key.clone(), value);
-    Ok(key)
-}
-
-/// Append the stamp stream to the page's `/Contents`, first bracketing any
-/// pre-existing content with the shared `q`/`Q` wrapper streams.
-fn append_to_page_contents(
-    doc: &mut Document,
-    page_id: ObjectId,
-    stamp_id: ObjectId,
-    push_id: ObjectId,
-    pop_id: ObjectId,
-) -> Result<(), String> {
-    enum Existing {
-        None,
-        Items(Vec<Object>),
-        Inline(Box<Stream>),
-    }
-    let existing = {
-        let dict = doc.get_dictionary(page_id).map_err(|e| e.to_string())?;
-        match dict.get(b"Contents") {
-            Ok(Object::Reference(id)) => Existing::Items(vec![Object::Reference(*id)]),
-            Ok(Object::Array(items)) => Existing::Items(items.clone()),
-            Ok(Object::Stream(s)) => Existing::Inline(Box::new(s.clone())),
-            Ok(_) => return Err("Page /Contents is not a stream or array".to_string()),
-            Err(_) => Existing::None,
-        }
-    };
-    let items = match existing {
-        Existing::None => Vec::new(),
-        Existing::Items(items) => items,
-        Existing::Inline(s) => vec![Object::Reference(doc.add_object(*s))],
-    };
-    let contents: Vec<Object> = if items.is_empty() {
-        vec![Object::Reference(stamp_id)]
-    } else {
-        let mut v = Vec::with_capacity(items.len() + 3);
-        v.push(Object::Reference(push_id));
-        v.extend(items);
-        v.push(Object::Reference(pop_id));
-        v.push(Object::Reference(stamp_id));
-        v
-    };
-    doc.get_object_mut(page_id)
-        .map_err(|e| e.to_string())?
-        .as_dict_mut()
-        .map_err(|e| e.to_string())?
-        .set("Contents", contents);
-    Ok(())
-}
-
 // ---------------------------------------------------------------------------
 // tests
 // ---------------------------------------------------------------------------
@@ -674,6 +448,8 @@ mod tests {
     use super::*;
     use crate::util::fixtures::{page_content_text, sample, sample_with_text};
     use crate::util::number_as_f32;
+    use lopdf::content::Content;
+    use lopdf::{Dictionary, Stream};
 
     // -- helpers ------------------------------------------------------------
 

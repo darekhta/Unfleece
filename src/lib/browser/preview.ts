@@ -2,13 +2,13 @@
 // watermark). Renders a single page to a <canvas> at a responsive CSS width with
 // devicePixelRatio for crisp output, and exposes the scale needed to map between
 // on-screen CSS pixels and PDF user-space points.
-import { pdfjsLib } from './pdfjs.js';
+import { pdfjsLib, loadPdfDocument } from './pdfjs.js';
 
 export type PdfDoc = Awaited<ReturnType<typeof pdfjsLib.getDocument>['promise']>;
 
 export async function loadPdfDoc(bytes: Uint8Array): Promise<PdfDoc> {
   // Clone the bytes: pdf.js transfers/detaches the buffer, but callers reuse it.
-  return pdfjsLib.getDocument({ data: bytes.slice() }).promise;
+  return loadPdfDocument(bytes);
 }
 
 export interface PageRender {

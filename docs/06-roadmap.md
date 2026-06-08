@@ -16,9 +16,9 @@
 - **unfleece.com** purchased (Cloudflare Registrar) and live with SSL; `unfleece.pages.dev`
   remains as the deploy alias
 - Svelte 5 islands + Web Worker (Comlink) compute; engines lazy-load on first file drop
-- `unfleece-core` Rust crate (lopdf + krilla) → WASM via wasm-pack; powers lossless
-  **Optimize**, all-page **Rotate**, PDF/A export, and Rust page selection for
-  split/extract/remove/reorder
+- `unfleece-core` Rust crate (lopdf + krilla + RustCrypto + zip + image) → WASM via
+  wasm-pack; powers the object/generate engine: organize, crop, metadata, sanitize,
+  forms, stamps, images→PDF, PDF/A, Office/EPUB containers, protect/unlock and optimize
 - Hand-authored CSS design system ("quiet, engineered, reassuring"): light-first theming
   with persisted dark toggle, emerald accent, glass + bento, custom monoline icon set,
   emerald-sheep logo
@@ -27,8 +27,7 @@
   Dependabot
 
 **The 38 tools** (see `docs/02-features.md` for the full table)
-- Organize: merge, split/extract/remove/reorder (Rust path with pdf-lib fallback),
-  rotate (Rust path for all pages), N-up, booklet, compare PDFs
+- Organize: merge, split/extract/remove/reorder, rotate, N-up, booklet, compare PDFs
 - Convert: images→PDF, PDF→JPG, PDF→PNG, PDF→Text, PDF→EPUB, Extract to Word,
   Extract to Excel, Extract to PowerPoint, OCR searchable PDF, PDF/A export,
   convert image, HTML/Markdown→PDF
@@ -53,8 +52,9 @@
 - Mobile-first interactions throughout: pointer events, 44 px targets, bottom-sheet modal
 
 **Quality**
-- 79 vitest unit + 6 cargo + 47 Playwright E2E (incl. a "nothing uploads" network
-  assertion and a WebKit-regression guard for signature persistence) — all green
+- 178 vitest unit + 568 cargo + 50 Playwright E2E (incl. a "no file upload" network
+  assertion, pack-conformance/proptest coverage, and a WebKit-regression guard for
+  signature persistence) — all green
 - Honest error mapping, focus management, keyboard paths, aria-live statuses
 
 ## ▶ Remaining launch steps (decided, not yet executed)
@@ -65,8 +65,8 @@
 
 ## 🔮 Future ideas (v2+, candidate pool)
 
-- Expand `unfleece-core` further where it clearly wins: deeper merge/object remapping,
-  metadata/forms/security object-graph paths, and more generation primitives
+- Split the rare PDF/A path into a lazy second WASM module to trim common-tool first-use
+  weight (see ADR-018), and keep expanding render-worker coverage with OffscreenCanvas.
 
 ## Explicitly NOT on the roadmap
 - Any server that processes files · high-fidelity Office conversion · AI summarize/chat ·

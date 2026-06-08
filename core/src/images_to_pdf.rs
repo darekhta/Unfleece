@@ -10,9 +10,10 @@
 //! - PNGs are flate-embedded; an alpha channel becomes a DeviceGray `/SMask`.
 
 use lopdf::content::{Content, Operation};
-use lopdf::{dictionary, Document, Object, ObjectId, Stream};
+use lopdf::{dictionary, Document, Object, Stream};
 use serde::Deserialize;
 
+use crate::imagexobject::{embed_jpeg, embed_png};
 use crate::pack::PackReader;
 use crate::util::save_compact;
 
@@ -154,176 +155,10 @@ fn layout(page_size: &PageSize, margin: f32, img_w: f32, img_h: f32) -> (f32, f3
     }
 }
 
-struct EmbeddedImage {
-    id: ObjectId,
-    width: u32,
-    height: u32,
-}
-
-/// Embed a PNG as a flate-compressed image XObject.
-///
-/// Alpha channels become a separate DeviceGray `/SMask` stream (the lopdf
-/// equivalent of pdf-lib's `embedPng` handling); opaque grayscale stays
-/// DeviceGray, everything else is stored as DeviceRGB.
-fn embed_png(doc: &mut Document, bytes: &[u8]) -> Result<EmbeddedImage, String> {
-    use image::GenericImageView;
-
-    let img = image::load_from_memory_with_format(bytes, image::ImageFormat::Png)
-        .map_err(|e| format!("Invalid image data: {e}"))?;
-    let (width, height) = img.dimensions();
-
-    let id = if img.color().has_alpha() {
-        let rgba = img.into_rgba8();
-        let mut rgb = Vec::with_capacity(width as usize * height as usize * 3);
-        let mut alpha = Vec::with_capacity(width as usize * height as usize);
-        for px in rgba.pixels() {
-            rgb.extend_from_slice(&px.0[..3]);
-            alpha.push(px.0[3]);
-        }
-        let smask_id = doc.add_object(flate_image_stream(
-            width,
-            height,
-            "DeviceGray",
-            &alpha,
-            None,
-        )?);
-        doc.add_object(flate_image_stream(
-            width,
-            height,
-            "DeviceRGB",
-            &rgb,
-            Some(smask_id),
-        )?)
-    } else if matches!(img.color(), image::ColorType::L8 | image::ColorType::L16) {
-        doc.add_object(flate_image_stream(
-            width,
-            height,
-            "DeviceGray",
-            img.into_luma8().as_raw(),
-            None,
-        )?)
-    } else {
-        doc.add_object(flate_image_stream(
-            width,
-            height,
-            "DeviceRGB",
-            img.into_rgb8().as_raw(),
-            None,
-        )?)
-    };
-    Ok(EmbeddedImage { id, width, height })
-}
-
-/// Embed a JPEG, preferring DCT passthrough (original bytes, no re-encode) like
-/// pdf-lib's `embedJpg`. CMYK/YCCK (4-component) and other unusual scans fall
-/// back to flate-compressed decoded RGB pixels, which every viewer renders
-/// identically.
-fn embed_jpeg(doc: &mut Document, bytes: &[u8]) -> Result<EmbeddedImage, String> {
-    use image::GenericImageView;
-
-    let img = image::load_from_memory_with_format(bytes, image::ImageFormat::Jpeg)
-        .map_err(|e| format!("Invalid image data: {e}"))?;
-    let (width, height) = img.dimensions();
-
-    let id = match jpeg_component_count(bytes) {
-        Some(1) => doc.add_object(dct_image_stream(width, height, "DeviceGray", bytes)),
-        Some(3) => doc.add_object(dct_image_stream(width, height, "DeviceRGB", bytes)),
-        _ => doc.add_object(flate_image_stream(
-            width,
-            height,
-            "DeviceRGB",
-            img.into_rgb8().as_raw(),
-            None,
-        )?),
-    };
-    Ok(EmbeddedImage { id, width, height })
-}
-
-/// Image XObject holding raw samples, zlib-compressed (`/FlateDecode`).
-fn flate_image_stream(
-    width: u32,
-    height: u32,
-    color_space: &str,
-    samples: &[u8],
-    smask: Option<ObjectId>,
-) -> Result<Stream, String> {
-    let mut dict = dictionary! {
-        "Type" => "XObject",
-        "Subtype" => "Image",
-        "Width" => width as i64,
-        "Height" => height as i64,
-        "ColorSpace" => color_space,
-        "BitsPerComponent" => 8,
-        "Filter" => "FlateDecode",
-    };
-    if let Some(id) = smask {
-        dict.set("SMask", id);
-    }
-    Ok(Stream::new(dict, flate_compress(samples)?))
-}
-
-/// Image XObject carrying the original JPEG bytes (`/DCTDecode` passthrough).
-fn dct_image_stream(width: u32, height: u32, color_space: &str, jpeg: &[u8]) -> Stream {
-    Stream::new(
-        dictionary! {
-            "Type" => "XObject",
-            "Subtype" => "Image",
-            "Width" => width as i64,
-            "Height" => height as i64,
-            "ColorSpace" => color_space,
-            "BitsPerComponent" => 8,
-            "Filter" => "DCTDecode",
-        },
-        jpeg.to_vec(),
-    )
-}
-
-fn flate_compress(data: &[u8]) -> Result<Vec<u8>, String> {
-    use flate2::write::ZlibEncoder;
-    use flate2::Compression;
-    use std::io::Write;
-
-    let mut encoder = ZlibEncoder::new(Vec::new(), Compression::default());
-    encoder.write_all(data).map_err(|e| e.to_string())?;
-    encoder.finish().map_err(|e| e.to_string())
-}
-
-/// Number of color components from the JPEG's SOF header, if parseable.
-///
-/// The `image` crate converts CMYK to RGB during decode and reports `Rgb8`
-/// either way, so the only reliable way to know whether DCT passthrough with
-/// `/DeviceRGB` is safe is to read the Start-of-Frame marker ourselves.
-fn jpeg_component_count(bytes: &[u8]) -> Option<u8> {
-    let mut i = 2; // skip SOI (FFD8)
-    while i + 3 < bytes.len() {
-        if bytes[i] != 0xFF {
-            return None;
-        }
-        let marker = bytes[i + 1];
-        if marker == 0xFF {
-            i += 1; // fill byte
-            continue;
-        }
-        if marker == 0x01 || (0xD0..=0xD9).contains(&marker) {
-            i += 2; // standalone marker (TEM/RSTn/SOI/EOI), no length field
-            continue;
-        }
-        if matches!(marker, 0xC0..=0xC3 | 0xC5..=0xC7 | 0xC9..=0xCB | 0xCD..=0xCF) {
-            // SOFn: length(2) precision(1) height(2) width(2) components(1)
-            return bytes.get(i + 9).copied();
-        }
-        if marker == 0xDA {
-            return None; // start of scan — no SOF seen, give up
-        }
-        let len = u16::from_be_bytes([bytes[i + 2], bytes[i + 3]]) as usize;
-        i += 2 + len;
-    }
-    None
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::imagexobject::jpeg_component_count;
     use crate::pack::PackWriter;
     use crate::pages::page_count_native;
     use crate::util::fixtures::PNG_1X1;
@@ -694,37 +529,6 @@ mod tests {
         assert_eq!(name_of(&dict, b"Filter"), "DCTDecode");
         assert_eq!(name_of(&dict, b"ColorSpace"), "DeviceGray");
         assert_eq!(content, jpeg);
-    }
-
-    #[test]
-    fn jpeg_component_parser_handles_marker_edge_cases() {
-        let sof_rgb = [
-            0xFF, 0xD8, 0xFF, 0xC0, 0x00, 0x0B, 0x08, 0x00, 0x01, 0x00, 0x01, 0x03,
-        ];
-        assert_eq!(jpeg_component_count(&sof_rgb), Some(3));
-
-        let fill_bytes_before_sof = [
-            0xFF, 0xD8, 0xFF, 0xFF, 0xFF, 0xC0, 0x00, 0x0B, 0x08, 0x00, 0x01, 0x00, 0x01, 0x04,
-        ];
-        assert_eq!(jpeg_component_count(&fill_bytes_before_sof), Some(4));
-
-        let restart_before_sof = [
-            0xFF, 0xD8, 0xFF, 0xD0, 0xFF, 0xC0, 0x00, 0x0B, 0x08, 0x00, 0x01, 0x00, 0x01, 0x01,
-        ];
-        assert_eq!(jpeg_component_count(&restart_before_sof), Some(1));
-
-        assert_eq!(
-            jpeg_component_count(&[0xFF, 0xD8, 0x00, 0xC0, 0x00, 0x00]),
-            None
-        );
-        assert_eq!(
-            jpeg_component_count(&[0xFF, 0xD8, 0xFF, 0xDA, 0x00, 0x08]),
-            None
-        );
-        assert_eq!(
-            jpeg_component_count(&[0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x02]),
-            None
-        );
     }
 
     #[test]

@@ -26,7 +26,7 @@ export const en: LocaleBundle = {
     github: 'GitHub ↗',
     license: 'AGPL-3.0',
     reportIssue: 'Report an issue ↗',
-    noUpload: 'No upload',
+    noUpload: 'No file upload',
     noAccount: 'No account',
     noTracking: 'No tracking',
     language: 'Language',
@@ -36,7 +36,7 @@ export const en: LocaleBundle = {
     breadcrumbHome: 'Home',
     breadcrumbTools: 'Tools',
     privateWorkspace: 'Private workspace',
-    nothingUploaded: 'Nothing uploaded',
+    nothingUploaded: 'No file uploaded',
     howEyebrow: 'How it works',
     howHeading: (toolName) => `How to ${toolName.toLowerCase()}`,
     steps: [
@@ -46,7 +46,7 @@ export const en: LocaleBundle = {
     ],
     differenceEyebrow: 'The honest difference',
     differenceHeading: 'Why Unfleece vs fleeceware',
-    usBullets: ['Runs in your browser — no upload', 'Free, no account, no card', 'Open source (AGPL-3.0)', 'No file-size paywall'],
+    usBullets: ['Runs in your browser — no file upload', 'Free, no account, no card', 'Open source (AGPL-3.0)', 'No file-size paywall'],
     themHeading: 'Typical fleeceware site',
     themBullets: ['Uploads your file to a server', '$1 trial → ~$50 / week', 'Closed and opaque', 'Locks results behind pay'],
     questionsEyebrow: 'Questions',
@@ -56,11 +56,11 @@ export const en: LocaleBundle = {
     faqs: (toolName) => [
       {
         q: `Is ${toolName} really free?`,
-        a: 'Yes — free, forever, no account and no trial that bites. There is no server bill to recover because nothing is uploaded.',
+        a: 'Yes — free, forever, no account and no trial that bites. There is no document-processing server bill to recover.',
       },
       {
         q: 'Are my files uploaded anywhere?',
-        a: `No. Your browser reads the file into memory and runs ${toolName} on your device. Open the Network tab and watch — you will see zero upload requests.`,
+        a: `No. Your browser reads the file into memory and runs ${toolName} on your device. Open the Network tab and watch — you will see no file-upload request. If a tool errors and reports are enabled, only a content-blind /api/err beacon can appear.`,
       },
       {
         q: 'Is there a file-size or page limit?',
@@ -76,7 +76,7 @@ export const en: LocaleBundle = {
     heroLine1: 'Free, private PDF tools.',
     heroLine2: 'Your files never leave your browser.',
     subhead:
-      'Merge, split, convert, sign and compress — every tool runs entirely on your device. Free forever, no account, no upload. Open source, and honest about it.',
+      'Merge, split, convert, sign and compress — every tool runs entirely on your device. Free forever, no account, no file upload. Open source, and honest about it.',
     browseCta: 'Browse tools',
     howCta: 'How it works',
     proof: [
@@ -94,7 +94,7 @@ export const en: LocaleBundle = {
     proveSteps: [
       { strong: 'Open any tool', rest: ' and press F12 → Network tab.' },
       { strong: 'Run it on a file.', rest: ' Watch the request list.' },
-      { strong: 'See nothing upload.', rest: ' Turn off Wi-Fi — it still works.' },
+      { strong: 'See no file upload.', rest: ' Turn off Wi-Fi — it still works.' },
     ],
   },
   tools: {},

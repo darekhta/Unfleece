@@ -11,10 +11,10 @@ gaps**, not capability. Severity = how badly it bites.
 **Reality:** the JS heap / WASM linear memory (~300 MB reliable mobile, 2–4 GB desktop,
 ~4 GB hard wall) loads whole files in. A demo with 2 MB invoices silently crashes on a
 150 MB set — and the failure mode is a dead tab, not a graceful error.
-**Mitigation:** all heavy work in a Web Worker (crash kills the worker, not the page);
-detect input size and warn above ~100 MB desktop / ~40 MB mobile *before* processing;
-catch OOM → "file too large for in-browser processing"; process page-by-page. **Never
-market "no file size limits."**
+**Mitigation:** all object-graph work runs in a Web Worker (crash kills the worker, not
+the page); raster paths chunk page-by-page and yield; detect input size and warn above
+~100 MB desktop / ~40 MB mobile *before* processing; catch OOM → "file too large for
+in-browser processing." **Never market "no file size limits."**
 
 ### 2. PDF→Word/Excel/PowerPoint fidelity (expectation gap)
 **Who:** the highest-search-volume visitors ("pdf to word", "pdf to powerpoint").
@@ -63,9 +63,9 @@ WASM compresses poorly (Ghostscript ~15 MB raw, mupdf ~4.3, magick ~4.8, Tessera
 host lang packs on R2, show a determinate progress bar.
 
 ### 8. Password-protect / encrypt compatibility
-Protect/Unlock now ship through `@cantoo/pdf-lib` Standard Security support, but encrypted
-PDFs have many real-world edge cases. Full compatibility may still need MuPDF (AGPL) or
-careful RustCrypto work in `unfleece-core`.
+Protect/Unlock now ship through RustCrypto-backed Standard Security in `unfleece-core`,
+but encrypted PDFs have many real-world edge cases. Full compatibility may still need
+MuPDF (AGPL) for obscure revisions or malformed files.
 **Mitigation:** keep the UI honest, test common RC4/AES variants, and use the AGPL
 `unfleece-wrap` layer only if the permissive path is insufficient.
 
@@ -93,6 +93,24 @@ the next reload. Chromium does not reproduce it; only real WebKit does.
 swallow IDB write errors (surface "saved for this session only"); keep a
 reload-persistence E2E. Rule of thumb: anything storage-related must be verified on
 WebKit, not just Chromium.
+
+## The engine seam (resolved)
+The boundary between the object/generate engine (Rust→WASM) and the render/recognize
+engine (pdf.js+Canvas) is where the worst bugs lived — pdf.js detaches the
+`ArrayBuffer` it is handed, so reusing those bytes for the Rust core gave an empty
+buffer (the OCR detached-buffer bug). **Resolved:** the crossing is funneled through a
+single clone-safe doorway (`loadPdfDocument`/`dataForPdfjs`), pinned by a seam test
+(ADR-017). The threading model is now documented honestly (docs/01): object-graph work
+and pdf.js parsing are off-thread; Canvas rasterization is still main-thread (chunked),
+with an OffscreenCanvas-in-worker move as the scoped next step.
+
+## Observability blind spot (resolved — the deliberate decision)
+On-device processing means production bugs are invisible until a user reports them
+(cf. the WebKit IndexedDB-Blob loss and the OCR buffer bug). **Resolved without
+betraying the privacy promise:** a strictly content-blind error beacon sends only
+`{tool, errorClass, engine, browser, locale}` — never files, names, messages, stacks,
+URLs, or identifiers — honoring Do-Not-Track with a one-click opt-out (ADR-016). It is
+the project's single, documented server touchpoint and can see counts, never content.
 
 ## Bottom line
 The two things most likely to sink Unfleece were **the AGPL decision** (resolved:

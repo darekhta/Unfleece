@@ -275,7 +275,7 @@ astro-island { display: contents; }
 .verify-line a { color: var(--ink-soft); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--border-strong); }
 .verify-line a:hover { text-decoration-color: var(--accent-400); }
 
-/* Proof panel (right column) — tangible "nothing uploaded" glimpse */
+/* Proof panel (right column) — tangible local-file-processing glimpse */
 .hero-proof { padding: 1.25rem; border-radius: var(--radius-lg); display: flex; flex-direction: column; gap: 1rem; }
 .hero-proof .dropzone { padding: 2rem 1.25rem; }
 .hero-proof .dz-icon { width: 40px; height: 40px; }

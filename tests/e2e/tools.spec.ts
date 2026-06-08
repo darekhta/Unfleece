@@ -307,7 +307,7 @@ test('merge two PDFs (and never uploads)', async ({ page }) => {
   await expect(page.locator('.file-row .f-name').first()).toHaveText('a.pdf');
   expect(await runAndDownload(page)).toBe('a+1-merged.pdf');
 
-  // Privacy guarantee: nothing was uploaded.
+  // Privacy guarantee: no file upload requests were made.
   expect(posts, `unexpected upload requests: ${posts.join(', ')}`).toHaveLength(0);
 });
 
@@ -321,7 +321,7 @@ test('invalid PDFs show a focused friendly error', async ({ page }) => {
   await expect(error).toBeFocused();
   await expect(error).toContainText('Invalid PDF');
   await expect(error).toContainText('This does not look like a valid PDF');
-  await expect(error).toContainText('Nothing left your device');
+  await expect(error).toContainText('No file left your device');
   await expect(error).not.toContainText('No PDF header');
 
   await page.getByRole('button', { name: 'Start over' }).click();

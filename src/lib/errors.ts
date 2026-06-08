@@ -3,7 +3,7 @@ export interface FriendlyError {
   message: string;
 }
 
-const PRIVACY_NOTE = 'Nothing left your device.';
+const PRIVACY_NOTE = 'No file left your device.';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
@@ -90,4 +90,32 @@ export function friendlyError(error: unknown, fallbackTitle = 'Something went wr
     title: fallbackTitle,
     message: sentenceWithPrivacy('We could not finish this file. Try another file or a smaller document.'),
   };
+}
+
+/**
+ * A content-blind classification of an error: one of a fixed allowlist of
+ * tokens. It may inspect the error name/message locally, but telemetry only
+ * sends the fixed token — never the raw text, which could contain a filename.
+ * Safe to send in telemetry — see lib/telemetry.ts.
+ */
+export type ErrorClass =
+  | 'cancelled'
+  | 'password'
+  | 'invalid-pdf'
+  | 'oom'
+  | 'render'
+  | 'selection'
+  | 'unsupported'
+  | 'other';
+
+export function errorClass(error: unknown): ErrorClass {
+  const haystack = `${errorName(error)} ${firstLine(rawErrorMessage(error))}`.toLowerCase();
+  if (haystack.includes('abort') || haystack.includes('cancel')) return 'cancelled';
+  if (/(password|encrypted|encrypt|protected)/.test(haystack)) return 'password';
+  if (/(invalid pdf|no pdf header|failed to parse|parse pdf|not a pdf|xref|trailer|unexpected eof|corrupt|malformed)/.test(haystack)) return 'invalid-pdf';
+  if (/(out of memory|allocation|array buffer|max.*call stack|too large)/.test(haystack)) return 'oom';
+  if (/(canvas|toblob|dommatrix|render|bitmap|webgl|offscreen)/.test(haystack)) return 'render';
+  if (/(no pages|cannot remove every page|order must|enter at least|page range|select at least|choose at least|draw your signature|nothing placed|required)/.test(haystack)) return 'selection';
+  if (/(unsupported|not supported|xfa|unknown image kind|invalid page size)/.test(haystack)) return 'unsupported';
+  return 'other';
 }

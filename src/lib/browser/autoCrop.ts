@@ -1,4 +1,4 @@
-import { pdfjsLib } from './pdfjs.js';
+import { loadPdfDocument } from './pdfjs.js';
 import { reportProgress, throwIfAborted, type RunOptions } from '../progress.js';
 import { wasmSetCropBoxes, type WasmCropBox } from '../wasm/core.js';
 
@@ -46,7 +46,7 @@ export async function autoCropPdf(bytes: Uint8Array, opts: AutoCropOptions = {},
   const padding = Math.max(0, Math.min(144, Number(opts.padding ?? 6)));
 
   reportProgress(run, { phase: 'loading', label: 'Opening PDF…' });
-  const renderDoc = await pdfjsLib.getDocument({ data: bytes.slice() }).promise;
+  const renderDoc = await loadPdfDocument(bytes);
   const cropBoxes: WasmCropBox[] = [];
 
   try {

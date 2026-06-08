@@ -1,4 +1,4 @@
-import { pdfjsLib } from './pdfjs.js';
+import { pdfjsLib, loadPdfDocument } from './pdfjs.js';
 import { reportProgress, throwIfAborted, type RunOptions } from '../progress.js';
 
 export interface CompareOptions {
@@ -61,8 +61,8 @@ export async function comparePdfs(
 ): Promise<string> {
   const { scale = 0.75, threshold = 24 } = opts;
   reportProgress(run, { phase: 'loading', label: 'Opening PDFs…' });
-  const a = await pdfjsLib.getDocument({ data: first }).promise;
-  const b = await pdfjsLib.getDocument({ data: second }).promise;
+  const a = await loadPdfDocument(first);
+  const b = await loadPdfDocument(second);
   const lines: string[] = ['PDF visual comparison', ''];
   let compared = 0;
   let pagesWithDifferences = 0;

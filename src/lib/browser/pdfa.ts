@@ -1,4 +1,4 @@
-import { pdfjsLib } from './pdfjs.js';
+import { loadPdfDocument } from './pdfjs.js';
 import { abortError, reportProgress, throwIfAborted, type RunOptions } from '../progress.js';
 
 interface RenderedPngPage {
@@ -53,7 +53,7 @@ function packPages(pages: RenderedPngPage[], date: Date): Uint8Array {
 export async function exportPdfA(bytes: Uint8Array, opts: PdfAOptions = {}, run: RunOptions = {}): Promise<Uint8Array> {
   const { scale = 1.5 } = opts;
   reportProgress(run, { phase: 'loading', label: 'Opening PDF…' });
-  const src = await pdfjsLib.getDocument({ data: bytes }).promise;
+  const src = await loadPdfDocument(bytes);
   const pages: RenderedPngPage[] = [];
 
   try {

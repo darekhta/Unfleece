@@ -123,7 +123,7 @@
     <span class="dz-icon"><Icon name="upload" /></span>
     <span class="dz-primary">Drop {multiple ? `${kind}s` : `a ${kind}`} here, or click to choose</span>
     <span class="dz-types">{kind} · {multiple ? 'single or multiple' : 'one file'}</span>
-    <span class="dz-privacy"><Icon name="lock" /> Files stay on your device — nothing is uploaded.</span>
+    <span class="dz-privacy"><Icon name="lock" /> Files stay on your device — no file upload.</span>
   </button>
 
   <input

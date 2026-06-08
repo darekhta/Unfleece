@@ -3,6 +3,23 @@
 //!
 //! Packs keep the JS↔WASM boundary to a single `&[u8]` argument, which avoids
 //! per-element copies and keeps wasm-bindgen signatures trivial.
+//!
+//! ## Versioning
+//!
+//! [`PACK_VERSION`] is the single source of truth for the pack-protocol version.
+//! The *current* wire format is unversioned (magic immediately followed by the
+//! payload) and every reader in the crate still calls [`PackReader::expect_magic`].
+//! The additive [`PackWriter::write_version`] / [`PackReader::read_version`] /
+//! [`PackReader::expect_magic_versioned`] helpers let a future revision insert a
+//! one-byte version immediately after the magic so a JS↔WASM mismatch fails loudly
+//! instead of silently mis-parsing. Flipping a pack to the versioned layout
+//! requires the matching change in `src/lib/wasm/pack.ts`, so it is intentionally
+//! *not* wired into the existing packs yet (see `tests/pack_conformance.rs`, which
+//! pins every current layout to catch an accidental format change).
+
+/// Current pack-protocol version. Bump in lockstep with `src/lib/wasm/pack.ts`
+/// whenever the versioned layout is adopted or the wire format changes.
+pub const PACK_VERSION: u8 = 1;
 
 pub struct PackReader<'a> {
     data: &'a [u8],
@@ -27,6 +44,22 @@ impl<'a> PackReader<'a> {
             return Err("Invalid input pack".to_string());
         }
         Ok(())
+    }
+
+    /// Read a one-byte version and confirm it matches `expected`. Use after
+    /// [`Self::expect_magic`] for versioned packs.
+    pub fn read_version(&mut self, expected: u8) -> Result<(), String> {
+        if self.read_u8()? != expected {
+            return Err("Unsupported input pack version".to_string());
+        }
+        Ok(())
+    }
+
+    /// Check the magic, then a one-byte version immediately after it. Returns a
+    /// clear "Unsupported input pack version" error on a version mismatch.
+    pub fn expect_magic_versioned(&mut self, magic: &[u8], version: u8) -> Result<(), String> {
+        self.expect_magic(magic)?;
+        self.read_version(version)
     }
 
     pub fn read_exact(&mut self, len: usize) -> Result<&'a [u8], String> {
@@ -109,6 +142,12 @@ impl PackWriter {
         Self {
             out: magic.to_vec(),
         }
+    }
+
+    /// Append a one-byte pack version (intended to follow the magic, for the
+    /// versioned layout). Paired with [`PackReader::read_version`].
+    pub fn write_version(self, version: u8) -> Self {
+        self.u8(version)
     }
 
     pub fn u8(mut self, v: u8) -> Self {
@@ -197,5 +236,55 @@ mod tests {
     fn rejects_wrong_magic() {
         let mut r = PackReader::new(b"NOPE...");
         assert!(r.expect_magic(b"TEST").is_err());
+    }
+
+    #[test]
+    fn versioned_header_round_trips() {
+        let pack = PackWriter::new(b"TEST")
+            .write_version(PACK_VERSION)
+            .u32(42)
+            .finish();
+        // The version byte sits immediately after the 4-byte magic.
+        assert_eq!(pack[4], PACK_VERSION);
+        let mut r = PackReader::new(&pack);
+        r.expect_magic_versioned(b"TEST", PACK_VERSION).unwrap();
+        assert_eq!(r.read_u32().unwrap(), 42);
+        r.expect_done().unwrap();
+    }
+
+    #[test]
+    fn rejects_unsupported_version() {
+        let pack = PackWriter::new(b"TEST")
+            .write_version(PACK_VERSION + 1)
+            .finish();
+        let mut r = PackReader::new(&pack);
+        assert_eq!(
+            r.expect_magic_versioned(b"TEST", PACK_VERSION).unwrap_err(),
+            "Unsupported input pack version"
+        );
+    }
+
+    #[test]
+    fn versioned_check_still_rejects_wrong_magic() {
+        let pack = PackWriter::new(b"NOPE")
+            .write_version(PACK_VERSION)
+            .finish();
+        let mut r = PackReader::new(&pack);
+        assert_eq!(
+            r.expect_magic_versioned(b"TEST", PACK_VERSION).unwrap_err(),
+            "Invalid input pack"
+        );
+    }
+
+    #[test]
+    fn read_version_reports_missing_version_byte() {
+        // Magic present but no version byte after it.
+        let pack = PackWriter::new(b"TEST").finish();
+        let mut r = PackReader::new(&pack);
+        r.expect_magic(b"TEST").unwrap();
+        assert_eq!(
+            r.read_version(PACK_VERSION).unwrap_err(),
+            "Input pack ended early"
+        );
     }
 }

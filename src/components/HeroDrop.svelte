@@ -51,7 +51,7 @@
     ondragleave={() => (dragOver = false)}
     ondrop={onDrop}
     data-testid="hero-dropzone"
-    aria-label="Drop a PDF or image to get started — processed on your device, nothing uploaded."
+    aria-label="Drop a PDF or image to get started — processed on your device, no file upload."
   >
     <span class="dz-icon"><Icon name={files.length ? 'check' : 'upload'} /></span>
     <span class="dz-primary">{files.length ? `${files[0].name} ready` : 'Drop a PDF to start'}</span>

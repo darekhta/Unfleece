@@ -146,3 +146,63 @@ hostile bytes to every entry point — it already caught a `u32` index-overflow 
 plus 169 vitest (through real WASM) and 47 E2E. wasm grew 2.05 → 2.59 MB (crypto + zip +
 image codecs). GOTCHA pinned: pdf.js detaches the input ArrayBuffer, so any tool that
 re-uses the bytes after `getDocument` must pass `bytes.slice()` (bit OCR).
+
+### ADR-016 — Content-blind error beacon (the one deliberate server touchpoint)
+**Decision:** report errors — and only errors — with a strictly allowlisted,
+content-free payload `{tool, errorClass, engine, browser, locale}`. It can never
+carry file names, file bytes, error messages, stack traces, URLs, cookies or any
+per-user identifier. It honors Do-Not-Track, has a one-click opt-out in the
+About page's privacy section (`uf-telemetry`), sends at most one fire-and-forget `sendBeacon`,
+skips user-cancellations, and fails silent. Sink: a Cloudflare Pages Function
+(`functions/api/err.ts`) that re-validates against the allowlist and writes one
+Analytics Engine data point (when the `ERRORS` binding is configured), else 204.
+**Why:** on-device processing means production bugs are otherwise invisible until
+a user reports them (cf. the WebKit IndexedDB-Blob loss and the OCR
+detached-buffer bug). This is the conscious choice over flying blind — observability
+without betraying the privacy promise. `errorClass()` (lib/errors.ts) derives a
+fixed token from the error *category*, never its text.
+**Consequence:** one Pages Function — the project's sole server touchpoint — sees
+counts, never content. To collect data, bind an Analytics Engine dataset named
+`ERRORS` in the Pages project; without it the beacon is a no-op 204.
+
+### ADR-017 — Two named engines and a clone-safe seam; honest threading model
+**Decision:** name the architecture as two engines — the Rust→WASM object/generate
+engine and the pdf.js+Canvas render/recognize engine (see docs/01) — and funnel
+every crossing through one clone-safe doorway (`loadPdfDocument`/`dataForPdfjs`
+in browser/pdfjs.ts) so pdf.js can never detach a buffer the Rust core reuses.
+Pin the invariant with a seam test. Correct the docs to stop claiming "all heavy
+work is in a Web Worker": object-graph work and pdf.js parsing are off-thread,
+but Canvas rasterization is still main-thread (chunked + yielding), with an
+OffscreenCanvas-in-worker move documented as the next step.
+**Why:** the seam was the source of the session's worst bugs (OCR detached
+buffer, WebKit Blob); making it a single guarded chokepoint removes the bug class
+structurally, and honest threading docs keep the architecture legible.
+**Consequence:** new render-engine code must load PDFs via `loadPdfDocument`,
+never raw `getDocument`.
+
+### ADR-018 — wasm split: measure first; carve PDF/A (krilla + fonts), not crypto/zip
+**Measured** (twiggy on the unstripped 4.24 MB wasm; proportions carry to the
+2.59 MB shipped artifact):
+
+| Feature | ~bytes (raw) | Used by |
+|---|---:|---|
+| **Fonts** (skrifa + read_fonts + write_fonts) | **~715 KB** | krilla only |
+| **krilla** + pdf_writer | ~245 KB | **PDF/A export only** |
+| Image codecs (zune + image + png + weezl) | ~260 KB | images→PDF, stamp/sign, redact, assemble |
+| lopdf | ~59 KB | almost every tool |
+| zip + miniz/flate | ~50 KB (shared) | Office/EPUB |
+| **Crypto** (aes+sha2+md5+rc4+cipher+digest) | **~37 KB** | protect/unlock |
+
+**Decision:** the original hunch ("carve crypto/krilla/zip") was wrong on the
+data — crypto (~37 KB) and zip (~25 KB) are negligible and shared. The whole-mass
+is **krilla + its font stack ≈ 960 KB (~40% of the bundle), for the single
+rarest tool (PDF/A)**. So the one worthwhile split is to extract PDF/A into a
+**lazy second wasm module** (`unfleece-pdfa`, its own `cdylib` + wasm-pack pkg,
+dynamic-`import()`ed only from the PDF/A path — the bundler-safe pattern, since
+wasm-bindgen's native module-splitting breaks Vite). Image codecs stay in core
+(shared by common tools); crypto/zip stay (too small to bother).
+**Expected:** merge/rotate/split/crop/etc. — the common tools — drop from ~2.59 MB
+toward ~1.6 MB first-use; PDF/A pays the ~1 MB only when chosen.
+**Status:** measured + decided; the extraction is the scoped next build-system
+change (it touches the crate layout + the npm wasm build + the pdfa bridge, so it
+lands on its own once the core consolidation has settled).

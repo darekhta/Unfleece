@@ -13,6 +13,7 @@
   import { downloadBlob, humanSize, outputBaseName } from '../lib/download.js';
   import { takePendingFiles } from '../lib/handoff.js';
   import { friendlyError } from '../lib/errors.js';
+  import { reportError, engineForTool } from '../lib/telemetry.js';
   import { focusAfterUpdate, focusDropzoneAfterUpdate } from '../lib/focus.js';
   import { listSignatures, saveSignature, deleteSignature } from '../lib/signatures.js';
   import { snapRectToGuides, type SnapGuides } from '../lib/browser/stageCoords.js';
@@ -192,6 +193,7 @@
       sigStatus = `Signature placed on page ${s.pageIndex + 1}.`;
     } catch (e) {
       // a tap must never silently do nothing — surface exactly what went wrong
+      reportError(tool.id, e, engineForTool(tool.id));
       error = friendlyError(e, "Couldn't place the signature");
       status = 'error';
       await focusAfterUpdate(() => errorEl);
@@ -270,6 +272,7 @@
       status = 'done';
       await focusAfterUpdate(() => resultEl);
     } catch (e) {
+      reportError(tool.id, e, engineForTool(tool.id));
       error = friendlyError(e, "Couldn't sign");
       status = 'error';
       await focusAfterUpdate(() => errorEl);

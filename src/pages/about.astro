@@ -3,7 +3,7 @@ import Base from '../layouts/Base.astro';
 import Icon from '../components/Icon.astro';
 ---
 
-<Base title="How it works" description="How Unfleece keeps your PDF files private: everything runs in your browser via WebAssembly. No upload, no account, no fleeceware.">
+<Base title="How it works" description="How Unfleece keeps your PDF files private: everything runs in your browser via WebAssembly. No file upload, no account, no fleeceware.">
   <section class="section" style="padding-top:2.5rem">
     <div class="container content-width">
       <div class="section-head" style="margin-bottom:1.5rem">
@@ -19,14 +19,52 @@ import Icon from '../components/Icon.astro';
         <div>
           <span class="eyebrow accent-text" style="display:block;margin-bottom:.75rem">Don't trust us — verify it</span>
           <h2 class="h2">Prove it's private in 10 seconds.</h2>
-          <p class="body">Don't take our word for it. Watch the network while you work — the only requests are for the app's own code, which your browser caches. The source is open, so you can read exactly what it does.</p>
+          <p class="body">Don't take our word for it. Watch the network while you work — no document is uploaded. If a tool errors and reports are enabled, you may also see the content-blind <code>/api/err</code> request described below. The source is open, so you can read exactly what it does.</p>
         </div>
         <div class="steps">
           <div class="step"><span class="n">1</span><p><strong>Open any tool</strong> and press F12 → Network tab.</p></div>
           <div class="step"><span class="n">2</span><p><strong>Run it on a file.</strong> Watch the request list.</p></div>
-          <div class="step"><span class="n">3</span><p><strong>See nothing upload.</strong> Turn off Wi-Fi — it still works.</p></div>
+          <div class="step"><span class="n">3</span><p><strong>See no file upload.</strong> Turn off Wi-Fi — it still works.</p></div>
         </div>
       </div>
+
+      <section class="tool-section" id="telemetry">
+        <span class="eyebrow">The one exception, in the open</span>
+        <h2 class="h2">Content-blind error reports</h2>
+        <p class="body ink-soft" style="max-width:64ch">
+          When a tool errors, Unfleece sends a single tiny report so we can find and fix bugs we can't
+          see otherwise. It contains <strong>only</strong> which tool failed, an error category, the engine,
+          your browser family and language — <strong>never</strong> your files, file names, error text, or any
+          identifier. It honors your browser's Do&#8209;Not&#8209;Track, and you can turn it off here:
+        </p>
+        <label class="checkbox-row" style="margin-top:1rem">
+          <input type="checkbox" id="telemetry-toggle" checked />
+          <span class="checkbox-box"><Icon name="check" /></span>
+          Send content-blind error reports
+        </label>
+        <p class="help" id="telemetry-state" style="margin-top:.5rem"></p>
+        <script is:inline>
+          (function () {
+            var box = document.getElementById('telemetry-toggle');
+            var state = document.getElementById('telemetry-state');
+            if (!box || !state) return;
+            var dnt = navigator.doNotTrack === '1' || navigator.doNotTrack === 'yes' || window.doNotTrack === '1';
+            function read() { try { return localStorage.getItem('uf-telemetry') !== 'off'; } catch (e) { return null; } }
+            function render() {
+              if (dnt) { box.checked = false; box.disabled = true; state.textContent = 'Off — your browser sends Do-Not-Track, which we honor.'; return; }
+              var enabled = read();
+              if (enabled === null) { box.checked = false; box.disabled = true; state.textContent = 'Off — browser storage is unavailable, so reports are disabled.'; return; }
+              box.checked = enabled;
+              state.textContent = box.checked ? 'On — content-blind error reports help us fix bugs.' : 'Off — no reports are sent.';
+            }
+            render();
+            box.addEventListener('change', function () {
+              try { localStorage.setItem('uf-telemetry', box.checked ? 'on' : 'off'); } catch (e) {}
+              render();
+            });
+          })();
+        </script>
+      </section>
 
       <section class="tool-section">
         <span class="eyebrow">Why it's free</span>

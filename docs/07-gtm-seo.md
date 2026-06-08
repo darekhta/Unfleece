@@ -33,7 +33,7 @@ durable engine that compounds slowly.
 
 ## Launch playbook (the spikes)
 - **Show HN** — lead with the architecture story: "Unfleece — free PDF tools that run
-  100% in your browser; watch the Network tab, nothing uploads. Open source."
+  100% in your browser; watch the Network tab, no file uploads. Open source."
 - **Reddit** — r/privacy, r/selfhosted, r/opensource, r/pdf, r/degoogle.
 - **Product Hunt** — the privacy + anti-fleeceware angle + premium UI.
 - **Ride privacy controversies** — there's recurring news about PDF sites' tracking/upload
@@ -49,7 +49,8 @@ Stirling-PDF at 80k stars but server/self-hosted). Our wedges:
 
 ## Trust signals to build in
 - Prominent, honest "Files never leave your device — [how it works]" with a link to the
-  open-source repo and a literal "open your Network tab" invitation.
+  open-source repo and a literal "open your Network tab" invitation, plus the documented
+  content-blind error-report exception.
 - No account wall, no email capture before use.
 - Clear, non-deceptive labels everywhere (the anti-fleeceware brand depends on it).
 

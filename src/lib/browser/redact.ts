@@ -1,4 +1,4 @@
-import { pdfjsLib } from './pdfjs.js';
+import { loadPdfDocument } from './pdfjs.js';
 import { abortError, reportProgress, throwIfAborted, type RunOptions } from '../progress.js';
 import { wasmImagePagesToPdf, type WasmImagePage } from '../wasm/core.js';
 
@@ -68,7 +68,7 @@ export async function redactPdf(bytes: Uint8Array, opts: RedactOptions, run: Run
   const fill = opts.color === 'white' ? '#fff' : '#000';
 
   reportProgress(run, { phase: 'loading', label: 'Opening PDF…' });
-  const source = await pdfjsLib.getDocument({ data: bytes }).promise;
+  const source = await loadPdfDocument(bytes);
   const imagePages: WasmImagePage[] = [];
 
   try {

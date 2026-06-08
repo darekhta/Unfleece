@@ -1,11 +1,22 @@
 # 03 — Engine Strategy: Build vs. Wrap
 
 > **Status: executed.** The build-the-moat plan below is now reality: `unfleece-core`
-> (Rust→WASM, ten modules, 230 cargo tests) owns every non-rendering operation —
-> merge, page selection/rotation, crop boxes, metadata, sanitize, text + image
-> stamping, images→PDF, N-up/booklet imposition, lossless optimize and PDF/A
-> emission. pdf.js remains the renderer; Ghostscript-WASM the compressor; pdf-lib
-> survives only behind forms fill/flatten and protect/unlock. See ADR-014.
+> (Rust→WASM, **568 cargo tests** incl. pack-conformance golden tests + proptest)
+> owns every non-rendering operation — merge, page selection/rotation, crop boxes,
+> metadata, sanitize, forms fill/flatten, text + image stamping, images→PDF,
+> N-up/booklet imposition, lossless optimize, PDF/A emission, Office/EPUB ZIP
+> containers, and Standard-Security encrypt/decrypt (RustCrypto). **pdf-lib has been
+> removed from production** — it survives only as a dev-only test oracle. This is the
+> *object/generate engine*; pdf.js + Canvas is the *render/recognize engine* (see the
+> two-engine model in `docs/01`). See ADR-014, ADR-017.
+>
+> **Consolidation (ADR-017):** image embedding (PNG/SMask + JPEG passthrough) lives in
+> one `imagexobject` module and content/resource plumbing in one `content` module,
+> shared by images_to_pdf / stamp_image / stamp_text / assemble — no more copy-paste
+> drift. The JS↔WASM **pack protocol** is pinned by golden byte-layout conformance
+> tests (`core/tests/pack_conformance.rs`) with a `PACK_VERSION` mechanism ready for
+> future revisions, so a cross-language mismatch fails a test instead of silently
+> corrupting output (ADR-018 covers the wasm-size split decision).
 
 > **TL;DR.** Build the ~20% that is our moat (page-object manipulation + PDF generation +
 > privacy ops) in pure Rust→WASM. Wrap the ~80% that is a 20-year tar pit (render, OCR,

@@ -15,6 +15,8 @@
 //! re-exported at the crate root, with a thin `#[wasm_bindgen]` wrapper in the
 //! `wasm` module compiled only for `wasm32`.
 
+pub mod content;
+pub mod imagexobject;
 pub mod pack;
 pub mod util;
 

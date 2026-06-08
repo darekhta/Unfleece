@@ -21,15 +21,14 @@ See `docs/03-engine.md` for the full build-vs-wrap reasoning.
 
 | Job | Engine | License | Load |
 |---|---|---|---|
-| Object ops (merge/split/rotate/crop/metadata/sanitize/stamps/N-up/booklet/images→PDF/optimize) | **Rust `unfleece-core`** (lopdf + krilla, 230 cargo tests) | MIT/Apache | lazy worker |
-| Forms fill/flatten · protect/unlock | `@cantoo/pdf-lib` (last remaining JS engine surface) | MIT | lazy worker |
+| Object/generate ops (merge/split/rotate/crop/metadata/sanitize/forms/stamps/N-up/booklet/images→PDF/PDF/A/Office/EPUB/protect/unlock/optimize) | **Rust `unfleece-core`** (lopdf + krilla + RustCrypto + zip, 568 cargo tests) | MIT/Apache | lazy worker |
 | Lossless optimize | `lopdf` in `unfleece-core` (Rust→WASM) | MIT/Apache | lazy per tool |
 | Render / view / PDF→image | `pdf.js` + Canvas today; PDFium remains an evaluated future option for harder rendering cases | Apache / BSD candidate | lazy |
 | Image codecs | `jSquash` (per-codec) | Apache-2.0 | tiny, per-codec lazy |
 | Exotic image formats | `magick-wasm` | Apache-2.0 | ~4.8 MB gz, lazy on demand |
 | OCR | `tesseract-wasm` + `eng.traineddata` | BSD-2-Clause / Apache-2.0 | lazy; local English model |
 | Photographic compress | `@okathira/ghostpdl-wasm` (Ghostscript/ghostpdl) | AGPL-3.0-or-later | ~15 MB, lazy, isolated |
-| JS libraries | `@cantoo/pdf-lib`, `pdf.js`, `jszip` | MIT / Apache / MIT | loaded only by tool paths that need them |
+| JS libraries | `pdf.js` plus browser glue; `@cantoo/pdf-lib` remains dev-only | Apache / MIT | loaded only by tool paths that need them |
 
 ## WASM toolchain (Rust)
 
@@ -57,7 +56,7 @@ See `docs/03-engine.md` for the full build-vs-wrap reasoning.
 1. **Landing/tool pages ship focused JS** — Astro islands; generic runner and special
    editors are split so ordinary tools do not load sign/crop/watermark UI code.
 2. **Lazy-load engines on first file-drop**, streaming-compile, cache immutable.
-3. **All heavy work in a Web Worker**; process PDFs page-by-page; dispose canvases.
+3. **Object-graph work in a Web Worker**; raster paths chunk page-by-page, yield, and dispose canvases.
 4. **Code-split by tool path**; a generic visitor must not download specialized editors,
    OCR, or codec engines.
 5. **Cap render DPI** (150 screen / 300 print toggle with a warning); use `OffscreenCanvas`.

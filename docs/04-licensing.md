@@ -54,7 +54,7 @@ layer, which is AGPL like the app. (See the crate layout in `docs/03-engine.md`.
 | krilla | MIT/Apache | ✅ | generation, PDF/A |
 | printpdf | MIT | ✅ | generation/layout |
 | PDFium (via pdfium-render) | **BSD-3** | ✅ | render — permissive! use `paulocoutinhox` WASM build |
-| @cantoo/pdf-lib | MIT | ✅ | JS fallback (maintained fork of abandoned Hopding pdf-lib) |
+| @cantoo/pdf-lib | MIT | ✅ | Dev-only fixture/test oracle (maintained fork of abandoned Hopding pdf-lib) |
 | pdf.js | Apache-2.0 | ✅ | JS render/text fallback |
 | jSquash | Apache-2.0 | ✅ | image codecs |
 | magick-wasm | Apache-2.0 | ✅ | exotic image formats |

@@ -10,6 +10,7 @@
   import { downloadBlob, humanSize, outputBaseName } from '../../lib/download.js';
   import { takePendingFiles } from '../../lib/handoff.js';
   import { friendlyError } from '../../lib/errors.js';
+  import { reportError, engineForTool } from '../../lib/telemetry.js';
   import { focusAfterUpdate, focusDropzoneAfterUpdate } from '../../lib/focus.js';
 
   let { tool }: { tool: Tool } = $props();
@@ -78,6 +79,7 @@
       status = 'done';
       await focusAfterUpdate(() => resultEl);
     } catch (e) {
+      reportError(tool.id, e, engineForTool(tool.id));
       error = friendlyError(e, "Couldn't add numbers");
       status = 'error';
       await focusAfterUpdate(() => errorEl);

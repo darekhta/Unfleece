@@ -4,7 +4,6 @@ import HomePage from '../../components/HomePage.astro';
 import {
   NON_DEFAULT_LOCALES,
   HOME_TEXT,
-  LAYOUT_TEXT,
   homeAlternates,
   localizedPath,
   type NonDefaultLocale,
@@ -16,7 +15,6 @@ export function getStaticPaths() {
 
 const { locale } = Astro.props as { locale: NonDefaultLocale };
 const h = HOME_TEXT[locale];
-const t = LAYOUT_TEXT[locale];
 const title = `${h.heroLine1} ${h.heroLine2}`;
 ---
 
