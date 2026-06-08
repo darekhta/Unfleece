@@ -1,0 +1,40 @@
+{
+  "id": "/",
+  "name": "Unfleece",
+  "short_name": "Unfleece",
+  "description": "Free, private PDF tools that run in your browser.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#EEF1F7",
+  "theme_color": "#EEF1F7",
+  "categories": ["productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "500x500",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Merge PDF",
+      "short_name": "Merge",
+      "url": "/tools/merge-pdf",
+      "icons": [{ "src": "/logo.png", "sizes": "500x500", "type": "image/png" }]
+    },
+    {
+      "name": "Compress PDF",
+      "short_name": "Compress",
+      "url": "/tools/compress-pdf",
+      "icons": [{ "src": "/logo.png", "sizes": "500x500", "type": "image/png" }]
+    },
+    {
+      "name": "Sign PDF",
+      "short_name": "Sign",
+      "url": "/tools/sign-pdf",
+      "icons": [{ "src": "/logo.png", "sizes": "500x500", "type": "image/png" }]
+    }
+  ]
+}

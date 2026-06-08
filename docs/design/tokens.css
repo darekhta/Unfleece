@@ -1,0 +1,310 @@
+/* ============================================================
+   UNFLEECE — Design tokens, base, typography, utilities
+   "Quiet, engineered, reassuring." One light source, one accent.
+   ============================================================ */
+
+:root {
+  /* — Backgrounds & elevation (dark, default) — */
+  --bg: #07090F;
+  --surface-1: #0C0F18;
+  --surface-2: #111623;
+  --surface-3: #161C2C;
+  --surface-4: #1C2336;
+  --surface-glass: rgba(255, 255, 255, 0.04);
+  --surface-glass-strong: rgba(255, 255, 255, 0.07);
+  --surface-sunken: rgba(0, 0, 0, 0.25);
+  --surface-inverse: #ffffff;
+
+  /* — Ink — */
+  --ink: #EEF1F8;
+  --ink-soft: #C7CDDD;
+  --muted: #97A0B5;
+  --muted-dim: #6B7488;
+
+  /* — Accent ramp (emerald) — */
+  --accent-50: #E6FBF1;
+  --accent-100: #C2F5DE;
+  --accent-200: #8FE9C4;
+  --accent-300: #5BDBA8;
+  --accent-400: #3FD49B;
+  --accent-500: #2ECC8F;
+  --accent-600: #1FB97E;
+  --accent-700: #179A68;
+  --accent-800: #127A53;
+  --accent-900: #0E5C3F;
+  --accent-contrast: #04221A;
+  --accent: var(--accent-500);
+
+  /* — Secondary cyan — */
+  --cyan-400: #38BDF8;
+  --cyan-500: #22A7E8;
+  --cyan-glow: rgba(56, 189, 248, 0.14);
+
+  /* — Semantic — */
+  --success: #3FD49B;
+  --success-wash: rgba(63, 212, 155, 0.12);
+  --warn: #F2B544;
+  --warn-wash: rgba(242, 181, 68, 0.12);
+  --error: #FB6F84;
+  --error-wash: rgba(251, 111, 132, 0.12);
+  --info: #38BDF8;
+  --info-wash: rgba(56, 189, 248, 0.12);
+
+  /* — Category hues (subtle wayfinding) — */
+  --cat-organize: #2ECC8F;
+  --cat-convert: #38BDF8;
+  --cat-edit: #5BDBA8;
+  --cat-optimize: #F2B544;
+  --cat-forms: #7FB2F0;
+  --cat-security: #1FB97E;
+
+  /* — Borders — */
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.14);
+  --border-accent: rgba(46, 204, 143, 0.45);
+  --focus-ring: rgba(63, 212, 155, 0.85);
+  --focus-halo: rgba(46, 204, 143, 0.18);
+
+  /* — Gradients — */
+  --grad-brand: linear-gradient(135deg, var(--accent-500), var(--cyan-400));
+  --grad-text: linear-gradient(120deg, var(--accent-300) 10%, var(--cyan-400));
+  --glow-emerald: radial-gradient(62rem 56rem at 14% -16%, rgba(46, 204, 143, 0.12), transparent 60%);
+  --glow-rim: radial-gradient(46rem 46rem at 110% 2%, rgba(56, 189, 248, 0.08), transparent 56%);
+
+  /* — Radii — */
+  --radius-xs: 6px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --radius-full: 9999px;
+
+  /* — Shadows / elevation — */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 6px 20px -6px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 18px 50px -12px rgba(0, 0, 0, 0.6);
+  --shadow-pop: 0 24px 60px -16px rgba(0, 0, 0, 0.7);
+  --inset-hi: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --ring-accent-glow: 0 0 0 1px rgba(46, 204, 143, 0.35), 0 8px 30px -8px rgba(46, 204, 143, 0.25);
+
+  /* — Motion — */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 320ms;
+  --dur-page: 420ms;
+
+  /* — Type — */
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  color-scheme: dark;
+}
+
+/* — Light theme — */
+:root[data-theme="light"] {
+  --bg: #EEF1F7;
+  --surface-1: #FFFFFF;
+  --surface-2: #FFFFFF;
+  --surface-3: #F4F6FB;
+  --surface-4: #FFFFFF;
+  --surface-glass: rgba(255, 255, 255, 0.72);
+  --surface-glass-strong: rgba(255, 255, 255, 0.9);
+  --surface-sunken: rgba(15, 20, 32, 0.04);
+
+  --ink: #0E1320;
+  --ink-soft: #313a4d;
+  --muted: #5A6477;
+  --muted-dim: #8a93a6;
+
+  --accent-500: #0E9E68;
+  --accent-400: #12B377;
+  --accent-300: #1FB97E;
+  --accent-contrast: #FFFFFF;
+  --accent: var(--accent-500);
+
+  --border: rgba(15, 20, 32, 0.10);
+  --border-strong: rgba(15, 20, 32, 0.18);
+  --border-accent: rgba(14, 158, 104, 0.5);
+  --focus-ring: rgba(14, 158, 104, 0.9);
+  --focus-halo: rgba(14, 158, 104, 0.18);
+
+  --grad-text: linear-gradient(120deg, #0E9E68 10%, #1389c4);
+  --glow-emerald: radial-gradient(62rem 56rem at 14% -16%, rgba(46, 204, 143, 0.09), transparent 60%);
+  --glow-rim: radial-gradient(46rem 46rem at 110% 2%, rgba(56, 189, 248, 0.07), transparent 56%);
+
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.08);
+  --shadow-md: 0 6px 20px -6px rgba(16, 24, 40, 0.14);
+  --shadow-lg: 0 18px 50px -12px rgba(16, 24, 40, 0.18);
+  --shadow-pop: 0 24px 60px -16px rgba(16, 24, 40, 0.22);
+  --inset-hi: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+
+  color-scheme: light;
+}
+
+/* ============================================================
+   Reset & base
+   ============================================================ */
+*, *::before, *::after { box-sizing: border-box; }
+* { margin: 0; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  font-family: var(--font-sans);
+  background: var(--bg);
+  color: var(--ink);
+  line-height: 1.6;
+  font-feature-settings: 'cv05', 'cv08', 'ss01';
+  font-optical-sizing: auto;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Ambient light: two layers only (emerald dominant + cyan rim). Fixed. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: var(--glow-emerald), var(--glow-rim);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Matte grain — barely perceptible, kills banding (dark only) */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.018;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+:root[data-theme="light"] body::after { display: none; }
+
+img, svg { display: block; }
+button, input, select, textarea { font: inherit; color: inherit; }
+a { color: inherit; text-decoration: none; }
+
+::selection { background: rgba(46, 204, 143, 0.28); color: var(--ink); }
+
+/* ============================================================
+   Typography scale
+   ============================================================ */
+.display {
+  font-size: clamp(2.75rem, 6vw, 4.6rem);
+  font-weight: 700;
+  line-height: 1.03;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+.h1 {
+  font-size: clamp(2rem, 3.5vw, 2.75rem);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.022em;
+  text-wrap: balance;
+}
+.h2 {
+  font-size: 1.75rem;
+  font-weight: 650;
+  line-height: 1.18;
+  letter-spacing: -0.015em;
+}
+.h3 {
+  font-size: 1.375rem;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+.h4 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.005em;
+}
+.body-lg { font-size: 1.125rem; line-height: 1.6; }
+.body { font-size: 1rem; line-height: 1.6; }
+.body-sm { font-size: 0.9375rem; line-height: 1.55; }
+.caption { font-size: 0.8125rem; line-height: 1.4; letter-spacing: 0.005em; }
+.eyebrow {
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+.mono { font-family: var(--font-mono); font-size: 0.875rem; line-height: 1.5; }
+
+.gradient-word {
+  background: var(--grad-text);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+.ink-soft { color: var(--ink-soft); }
+.muted { color: var(--muted); }
+.accent-text { color: var(--accent-400); }
+
+/* ============================================================
+   Layout helpers
+   ============================================================ */
+.container {
+  width: 100%;
+  max-width: 1216px;
+  margin-inline: auto;
+  padding-inline: 1.25rem;
+}
+@media (min-width: 768px) { .container { padding-inline: 2rem; } }
+
+.prose-width { max-width: 720px; }
+.content-width { max-width: 1024px; }
+
+.section { position: relative; z-index: 2; }
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+}
+
+/* Skip link */
+.skip-link {
+  position: fixed; top: 0.5rem; left: 0.5rem; z-index: 100;
+  background: var(--surface-3); color: var(--ink);
+  padding: 0.6rem 1rem; border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  transform: translateY(-150%);
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+.skip-link:focus-visible { transform: translateY(0); }
+
+/* ============================================================
+   Global focus ring
+   ============================================================ */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: inherit;
+  box-shadow: 0 0 0 4px var(--focus-halo);
+}
+
+/* ============================================================
+   Reduced motion
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

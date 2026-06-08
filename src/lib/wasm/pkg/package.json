@@ -1,0 +1,21 @@
+{
+  "name": "unfleece-core",
+  "type": "module",
+  "description": "Pure-Rust PDF object-graph operations for Unfleece, compiled to WebAssembly.",
+  "version": "0.1.0",
+  "license": "MIT OR Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/darekhta/Unfleece"
+  },
+  "files": [
+    "unfleece_core_bg.wasm",
+    "unfleece_core.js",
+    "unfleece_core.d.ts"
+  ],
+  "main": "unfleece_core.js",
+  "types": "unfleece_core.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}

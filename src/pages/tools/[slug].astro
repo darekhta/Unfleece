@@ -1,0 +1,174 @@
+---
+import Base from '../../layouts/Base.astro';
+import Icon from '../../components/Icon.astro';
+import ToolRunner from '../../components/ToolRunner.svelte';
+import SignTool from '../../components/SignTool.svelte';
+import FillFormTool from '../../components/FillFormTool.svelte';
+import RedactTool from '../../components/RedactTool.svelte';
+import PageNumbersTool from '../../components/editor/PageNumbersTool.svelte';
+import CropTool from '../../components/editor/CropTool.svelte';
+import WatermarkTool from '../../components/editor/WatermarkTool.svelte';
+import { TOOLS, CATEGORIES, type Tool } from '../../lib/registry';
+import {
+  CATEGORY_TEXT,
+  LOCALES,
+  TOOL_PAGE_TEXT,
+  localizeTool,
+  localizedToolPath,
+  toolAlternates,
+  type Locale,
+} from '../../lib/locales';
+
+export function getStaticPaths() {
+  return TOOLS.map((tool) => ({ params: { slug: tool.slug }, props: { tool } }));
+}
+
+const locale: Locale = 'en';
+const { tool: baseTool } = Astro.props as { tool: Tool };
+const tool = localizeTool(baseTool, locale);
+const cat = CATEGORIES[tool.category];
+const catText = CATEGORY_TEXT[locale][tool.category];
+const pageText = TOOL_PAGE_TEXT[locale];
+
+let related = TOOLS.filter((t) => t.category === baseTool.category && t.id !== baseTool.id);
+if (related.length < 4) related = related.concat(TOOLS.filter((t) => t.category !== baseTool.category && t.id !== baseTool.id));
+related = related.slice(0, 4).map((t) => localizeTool(t, locale));
+const faqs = pageText.faqs(tool.name);
+---
+
+<Base
+  title={tool.name}
+  description={tool.description}
+  lang={locale}
+  canonicalPath={localizedToolPath(locale, baseTool.slug)}
+  alternates={toolAlternates(baseTool.slug)}
+>
+  <section class="section" style="padding-top:2.5rem">
+    <div class="container content-width">
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="/">{pageText.breadcrumbHome}</a><span class="sep"><Icon name="chevronRight" /></span>
+        <a href="/#tools-section">{pageText.breadcrumbTools}</a><span class="sep"><Icon name="chevronRight" /></span>
+        <a href={`/#cat-${tool.category}`}>{catText.label}</a><span class="sep"><Icon name="chevronRight" /></span>
+        <span aria-current="page">{tool.name}</span>
+      </nav>
+
+      <header class="tool-header">
+        <span class={cat.catClass ? `chip ${cat.catClass}` : 'chip'}><Icon name={tool.icon} /></span>
+        <div>
+          <h1 class="h1">{tool.name}</h1>
+          <p class="desc">{tool.description}</p>
+        </div>
+      </header>
+
+      <div class="runner" aria-label={`${tool.name} tool`}>
+        <div class="runner-top">
+          <div class="rt-id">
+            <span class="rt-ico"><Icon name="shield" /></span>
+            <span class="rt-label">{pageText.privateWorkspace}</span>
+          </div>
+          <span class="trust-pill rt-trust"><Icon name="lock" /> {pageText.nothingUploaded}</span>
+        </div>
+        <div class="runner-body-host">
+          {
+            tool.special === 'sign'
+              ? <SignTool client:load tool={tool} />
+              : tool.special === 'fill-form'
+                ? <FillFormTool client:load tool={tool} />
+                : tool.special === 'page-numbers'
+                  ? <PageNumbersTool client:load tool={tool} />
+                  : tool.special === 'crop'
+                    ? <CropTool client:load tool={tool} />
+                    : tool.special === 'watermark'
+                      ? <WatermarkTool client:load tool={tool} />
+                      : tool.special === 'redact'
+                        ? <RedactTool client:load tool={tool} />
+                        : <ToolRunner client:load tool={tool} />
+          }
+        </div>
+      </div>
+
+      <!-- How it works -->
+      <section class="tool-section">
+        <span class="eyebrow">{pageText.howEyebrow}</span>
+        <h2 class="h2">{pageText.howHeading(tool.name)}</h2>
+        <div class="howto">
+          {pageText.steps.map((step, index) => (
+            <div class="step"><div class="n">{index + 1}</div><h4 class="h4">{step.title}</h4><p>{step.body}</p></div>
+          ))}
+        </div>
+      </section>
+
+      <!-- The honest difference -->
+      <section class="tool-section">
+        <span class="eyebrow">{pageText.differenceEyebrow}</span>
+        <h2 class="h2">{pageText.differenceHeading}</h2>
+        <div class="compare">
+          <div class="col us">
+            <h3 class="h4"><span class="chip" style="width:30px;height:30px"><Icon name="sheep" sw={1.6} /></span> Unfleece</h3>
+            <ul>
+              {pageText.usBullets.map((item) => <li><Icon name="check" /> {item}</li>)}
+            </ul>
+          </div>
+          <div class="col them">
+            <h3 class="h4">{pageText.themHeading}</h3>
+            <ul>
+              {pageText.themBullets.map((item) => <li><Icon name="x" /> {item}</li>)}
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- FAQ -->
+      <section class="tool-section prose-width">
+        <span class="eyebrow">{pageText.questionsEyebrow}</span>
+        <h2 class="h2">{pageText.questionsHeading}</h2>
+        <div class="faq">
+          {
+            faqs.map((f, i) => (
+              <details open={i === 0}>
+                <summary>{f.q}<span class="chev"><Icon name="chevronRight" /></span></summary>
+                <div class="answer">{f.a}</div>
+              </details>
+            ))
+          }
+        </div>
+      </section>
+
+      <!-- Related -->
+      <section class="tool-section">
+        <span class="eyebrow">{pageText.relatedEyebrow}</span>
+        <h2 class="h2">{pageText.relatedHeading}</h2>
+        <div class="related-row">
+          {
+            related.map((t) => (
+              <a class="related-card" href={localizedToolPath(locale, t.slug)}>
+                <span class={CATEGORIES[t.category].catClass ? `chip ${CATEGORIES[t.category].catClass}` : 'chip'}>
+                  <Icon name={t.icon} />
+                </span>
+                <span class="rc-name">{t.name}</span>
+              </a>
+            ))
+          }
+        </div>
+      </section>
+
+      <div class="locale-switcher" aria-label="Languages">
+        {
+          toolAlternates(baseTool.slug)
+            .filter((alt) => alt.lang !== 'x-default')
+            .map((alt) => (
+              <a href={alt.path} aria-current={alt.lang === LOCALES[locale].htmlLang ? 'page' : undefined}>
+                {alt.lang.toUpperCase()}
+              </a>
+            ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <script is:inline type="application/ld+json" set:html={JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqs.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })),
+  })} />
+</Base>

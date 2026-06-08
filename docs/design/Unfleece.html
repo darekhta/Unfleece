@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Unfleece — Free, private PDF tools</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap&subset=latin,latin-ext,cyrillic" rel="stylesheet">
+<link rel="stylesheet" href="tokens.css?v=4">
+<link rel="stylesheet" href="components.css?v=4">
+<link rel="stylesheet" href="runner.css?v=4">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<!-- ===================== HEADER ===================== -->
+<header class="site-header">
+  <div class="container header-inner">
+    <a class="brand" href="#" data-view-link="home" aria-label="Unfleece home">
+      <span class="mark" data-icon="sheep" data-sw="1.6"></span>
+      <span>unfleece</span>
+    </a>
+
+    <nav class="main-nav" aria-label="Primary">
+      <a href="#" data-nav="tools">All tools</a>
+      <a href="#" data-nav="how">How it works</a>
+      <a href="#" data-nav="privacy">Privacy</a>
+    </nav>
+
+    <div class="header-actions">
+      <span class="trust-pill header-pill"><span class="dot"></span><span data-icon="lock"></span> Runs on your device</span>
+      <button class="btn-icon theme-toggle" id="theme-toggle" type="button" aria-label="Switch to dark theme">
+        <span class="moon" data-icon="moon"></span><span class="sun" data-icon="sun"></span>
+      </button>
+      <a class="btn-icon" href="#" onclick="return false" aria-label="View on GitHub (opens in new tab)"><span data-icon="github"></span></a>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+
+<!-- ===================== HOME ===================== -->
+<div class="view active" data-view="home" data-screen-label="Home">
+
+  <section class="hero section">
+    <div class="container">
+      <div class="hero-text stagger">
+        <div class="hero-eyebrow"><span class="trust-pill"><span data-icon="sheep" data-sw="1.6" style="color:var(--accent-400);width:16px;height:16px;display:inline-flex"></span> 38 free PDF tools · nothing uploaded</span></div>
+        <h1 class="display">Free, private PDF tools.<br><span class="gradient-word">Your files never leave your browser.</span></h1>
+        <p class="subhead body-lg">Merge, split, convert, sign and compress — 38 tools that run entirely on your device. The honest, open-source antidote to fleeceware that baits a $1 trial then bills you ~$50 a week.</p>
+        <div class="hero-ctas">
+          <a class="btn btn-primary btn-lg" id="browse-cta" href="#">Browse tools <span data-icon="arrowRight" data-sw="2"></span></a>
+          <button class="btn btn-ghost btn-lg" data-view-link="style">How it works</button>
+        </div>
+        <div class="verify-line"><span data-icon="lock"></span> Open your browser's <a href="#" onclick="return false">Network tab</a> while you work — you'll see zero uploads.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="trust-strip">
+        <div class="trust-card glass">
+          <span class="chip" data-icon="shield"></span>
+          <h3 class="h4">Private by design</h3>
+          <p class="body-sm">Files are processed locally and never uploaded. <a href="#" data-view-link="style">Verify in your Network tab.</a></p>
+        </div>
+        <div class="trust-card glass">
+          <span class="chip cat-forms" data-icon="sparkle"></span>
+          <h3 class="h4">Free forever</h3>
+          <p class="body-sm">No trials, no subscriptions, no file-size paywalls. There's nothing to upsell.</p>
+        </div>
+        <div class="trust-card glass">
+          <span class="chip cat-convert" data-icon="optimize"></span>
+          <h3 class="h4">Fast & open</h3>
+          <p class="body-sm">Runs locally via WebAssembly. Fully open source (AGPL-3.0).</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="tools-section" style="margin-top:4rem; scroll-margin-top:84px">
+    <div class="container">
+      <div class="section-head">
+        <span class="eyebrow">All 38 tools</span>
+        <h2 class="h2">Pick a tool — it opens, you run it, you download.</h2>
+        <p class="body">No sign-up. No queue. Everything happens in this tab.</p>
+      </div>
+      <div id="bento-host"></div>
+    </div>
+  </section>
+
+  <section class="section" id="how-section" style="margin-top:5rem; scroll-margin-top:84px">
+    <div class="container">
+      <div class="reassure glass">
+        <div>
+          <span class="eyebrow accent-text" style="display:block;margin-bottom:.75rem">Don't trust us — verify it</span>
+          <h2 class="h2">It works in 10 seconds, and you can prove it's private.</h2>
+          <p class="body">No file ever touches a server, so there's nothing to bill you for and nothing to leak. Free is just the honest default.</p>
+        </div>
+        <div class="steps">
+          <div class="step"><span class="n">1</span><p><strong>Open any tool</strong> and press F12 → Network tab.</p></div>
+          <div class="step"><span class="n">2</span><p><strong>Run it on a file.</strong> Watch the request list.</p></div>
+          <div class="step"><span class="n">3</span><p><strong>See nothing upload.</strong> Turn off Wi-Fi — it still works.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- ===================== TOOL PAGE ===================== -->
+<div class="view" data-view="tool" data-screen-label="Tool page — Merge PDF">
+  <section class="section" style="padding-top:2.5rem">
+    <div class="container content-width">
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="#" data-view-link="home">Home</a><span class="sep" data-icon="chevronRight"></span>
+        <a href="#" data-view-link="home">Tools</a><span class="sep" data-icon="chevronRight"></span>
+        <a href="#" data-view-link="home">Organize</a><span class="sep" data-icon="chevronRight"></span>
+        <span aria-current="page">Merge PDF</span>
+      </nav>
+
+      <header class="tool-header">
+        <span class="chip" data-icon="merge"></span>
+        <div>
+          <h1 class="h1">Merge PDF</h1>
+          <p class="desc">Combine multiple PDF files into a single document, in the order you add them — entirely in your browser.</p>
+        </div>
+      </header>
+
+      <div class="runner" aria-label="Merge PDF tool">
+        <div class="runner-top">
+          <div class="rt-id">
+            <span class="rt-ico" data-icon="shield"></span>
+            <span class="rt-label">Private workspace</span>
+          </div>
+          <span class="trust-pill rt-trust"><span class="dot"></span><span data-icon="lock"></span> Nothing uploaded</span>
+        </div>
+        <div id="runner-body-host"></div>
+      </div>
+
+      <!-- SEO content -->
+      <section class="tool-section">
+        <span class="eyebrow">How it works</span>
+        <h2 class="h2">How to merge PDF files</h2>
+        <div class="howto">
+          <div class="step"><div class="n">1</div><h4 class="h4">Add your PDFs</h4><p>Drop them in or click to choose. Drag to set the order.</p></div>
+          <div class="step"><div class="n">2</div><h4 class="h4">Set options (if any)</h4><p>Merge has none — most tools start with sensible defaults.</p></div>
+          <div class="step"><div class="n">3</div><h4 class="h4">Download the result</h4><p>One click. It was built right here, in your browser.</p></div>
+        </div>
+      </section>
+
+      <section class="tool-section">
+        <span class="eyebrow">The honest difference</span>
+        <h2 class="h2">Why Unfleece vs fleeceware</h2>
+        <div class="compare">
+          <div class="col us">
+            <h3 class="h4"><span class="chip" style="width:30px;height:30px" data-icon="sheep" data-sw="1.6"></span> Unfleece</h3>
+            <ul>
+              <li><span data-icon="check"></span> Runs in your browser — no upload</li>
+              <li><span data-icon="check"></span> Free, no account, no card</li>
+              <li><span data-icon="check"></span> Open source (AGPL-3.0)</li>
+              <li><span data-icon="check"></span> No file-size paywall</li>
+            </ul>
+          </div>
+          <div class="col them">
+            <h3 class="h4">Typical fleeceware site</h3>
+            <ul>
+              <li><span data-icon="x"></span> Uploads your file to a server</li>
+              <li><span data-icon="x"></span> $1 trial → ~$50 / week</li>
+              <li><span data-icon="x"></span> Closed and opaque</li>
+              <li><span data-icon="x"></span> Locks results behind pay</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="tool-section prose-width">
+        <span class="eyebrow">Questions</span>
+        <h2 class="h2">Frequently asked</h2>
+        <div class="faq">
+          <details open><summary>Is Merge PDF really free?<span class="chev" data-icon="chevronRight"></span></summary><div class="answer">Yes — free, forever, no account and no trial that bites. There's no server bill to recover because nothing is uploaded.</div></details>
+          <details><summary>Are my files uploaded anywhere?<span class="chev" data-icon="chevronRight"></span></summary><div class="answer">No. Your browser reads the files into memory and merges them on your device. Open the Network tab and watch — you'll see zero upload requests.</div></details>
+          <details><summary>Is there a file-size or page limit?<span class="chev" data-icon="chevronRight"></span></summary><div class="answer">No hard limit. The only ceiling is your browser's memory, so very large files may be slow. We warn you before that becomes a problem.</div></details>
+          <details><summary>Does it work offline?<span class="chev" data-icon="chevronRight"></span></summary><div class="answer">Once the page has loaded, yes. You can turn off Wi-Fi and merging still works — the strongest proof that nothing leaves your device.</div></details>
+        </div>
+      </section>
+
+      <section class="tool-section">
+        <span class="eyebrow">Keep going</span>
+        <h2 class="h2">Related tools</h2>
+        <div class="related-row" id="related-host"></div>
+      </section>
+    </div>
+  </section>
+</div>
+
+<!-- ===================== STYLE TILE ===================== -->
+<div class="view" data-view="style" data-screen-label="Design system">
+  <section class="section" style="padding-top:2.5rem">
+    <div class="container content-width">
+      <div class="section-head" style="margin-bottom:2rem">
+        <span class="eyebrow">Mini design system</span>
+        <h1 class="h1">The Unfleece system</h1>
+        <p class="body">Quiet, engineered, reassuring. One light source, one accent that earns its appearances.</p>
+      </div>
+
+      <!-- Colors -->
+      <div class="tile-section">
+        <h2 class="h2">Surfaces &amp; ink</h2>
+        <p class="sub body-sm">A cool-neutral elevation ladder — higher surface, lighter fill.</p>
+        <div class="swatch-grid" id="swatch-surfaces"></div>
+      </div>
+
+      <div class="tile-section">
+        <h2 class="h2">Accent ramp — emerald</h2>
+        <p class="sub body-sm">The one true accent. <span class="mono">--accent-500 · #2ECC8F</span> is the brand hero.</p>
+        <div class="ramp" id="accent-ramp"></div>
+      </div>
+
+      <div class="tile-section">
+        <h2 class="h2">Semantic colors</h2>
+        <div class="swatch-grid" id="swatch-semantic"></div>
+      </div>
+
+      <!-- Type -->
+      <div class="tile-section">
+        <h2 class="h2">Type scale</h2>
+        <p class="sub body-sm">Inter for UI &amp; display (full Cyrillic), JetBrains Mono for sizes, ranges &amp; code.</p>
+        <div id="type-rows">
+          <div class="type-row"><span class="tk">Display</span><div class="specimen"><div class="display" style="font-size:2.6rem">Files stay yours</div><div class="spec-meta">700 · clamp(2.75–4.6rem) · -0.03em</div></div></div>
+          <div class="type-row"><span class="tk">H1</span><div class="specimen"><div class="h1">Merge PDF</div><div class="spec-meta">700 · -0.022em</div></div></div>
+          <div class="type-row"><span class="tk">H2</span><div class="specimen"><div class="h2">All 38 tools</div><div class="spec-meta">650 · -0.015em</div></div></div>
+          <div class="type-row"><span class="tk">H3</span><div class="specimen"><div class="h3">Why it's private</div><div class="spec-meta">600</div></div></div>
+          <div class="type-row"><span class="tk">Body</span><div class="specimen"><div class="body">Your browser reads the file into memory and processes it on your device.</div><div class="spec-meta">400 · 16px · 1.6</div></div></div>
+          <div class="type-row"><span class="tk">Cyrillic</span><div class="specimen"><div class="h3">Вашi файли нiкуди не надсилаються</div><div class="spec-meta">Inter · Cyrillic subset</div></div></div>
+          <div class="type-row"><span class="tk">Mono</span><div class="specimen"><div class="mono">pages 1-3, 5, 8-10  ·  1.5 MB  ·  −68%</div><div class="spec-meta">JetBrains Mono · 14px</div></div></div>
+        </div>
+      </div>
+
+      <!-- Components -->
+      <div class="tile-section">
+        <h2 class="h2">Buttons</h2>
+        <div class="tile-card-grid">
+          <div class="demo-box">
+            <div class="demo-label">Variants</div>
+            <div class="demo-row"><button class="btn btn-primary">Merge PDFs <span data-icon="arrowRight" data-sw="2"></span></button><button class="btn btn-ghost">Start over</button></div>
+            <div class="demo-row"><button class="btn btn-danger">Remove all</button><button class="btn-link">Learn more</button></div>
+            <div class="demo-row"><button class="btn btn-primary" disabled>Disabled</button><button class="btn btn-primary"><span class="spinner"></span> Working…</button></div>
+          </div>
+          <div class="demo-box">
+            <div class="demo-label">Sizes &amp; icon</div>
+            <div class="demo-row"><button class="btn btn-primary btn-sm">Small</button><button class="btn btn-primary">Medium</button><button class="btn btn-primary btn-lg">Large</button></div>
+            <div class="demo-row"><button class="btn-icon" aria-label="Download"><span data-icon="download"></span></button><button class="btn-icon" aria-label="Copy"><span data-icon="copy"></span></button><button class="btn-icon" aria-label="Close"><span data-icon="x"></span></button></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tile-section">
+        <h2 class="h2">Form fields</h2>
+        <div class="tile-card-grid">
+          <div class="demo-box">
+            <div class="demo-label">Text · select · number</div>
+            <label class="label" for="d-text">Header text</label>
+            <input class="field" id="d-text" placeholder="e.g. Confidential" style="margin-bottom:.85rem">
+            <label class="label" for="d-sel">Page size</label>
+            <select class="field" id="d-sel" style="margin-bottom:.85rem"><option>A4</option><option>US Letter</option></select>
+            <label class="label" for="d-num">Margin (pt)</label>
+            <input class="field" id="d-num" type="number" value="24">
+          </div>
+          <div class="demo-box">
+            <div class="demo-label">Page-range · checkbox · invalid</div>
+            <label class="label" for="d-range">Pages</label>
+            <input class="field" id="d-range" value="1-3, 5, 8-10">
+            <div class="range-preview" style="margin-bottom:.85rem"><span class="range-chip">1</span><span class="range-chip">2</span><span class="range-chip">3</span><span class="range-chip">5</span><span class="range-summary">· 7 pages</span></div>
+            <label class="checkbox-row" style="margin-bottom:.85rem"><input type="checkbox" checked><span class="checkbox-box" data-icon="check"></span><span>Add page numbers</span></label>
+            <label class="label" for="d-inv">Out of range</label>
+            <input class="field invalid" id="d-inv" value="99" aria-invalid="true">
+            <div class="field-error"><span data-icon="alert"></span> This PDF has 12 pages — pick 1–12.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tile-section">
+        <h2 class="h2">Trust signal &amp; glass</h2>
+        <div class="tile-card-grid">
+          <div class="demo-box">
+            <div class="demo-label">Trust pill</div>
+            <div class="demo-row"><span class="trust-pill"><span class="dot"></span><span data-icon="lock"></span> Runs on your device</span></div>
+            <div class="demo-row"><span class="trust-pill"><span data-icon="shield"></span> No upload · <a href="#" onclick="return false" style="color:var(--accent-400)">Verify ↗</a></span></div>
+          </div>
+          <div class="glass demo-box">
+            <div class="demo-label">Glass card</div>
+            <p class="body-sm muted">Translucent fill + hairline + inset top-highlight + soft shadow + 12px blur. The cheap trick that makes glass read real.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="tile-section">
+        <h2 class="h2">Category color chips</h2>
+        <div class="cat-chip-row" id="cat-chips"></div>
+      </div>
+    </div>
+  </section>
+</div>
+
+</main>
+
+<!-- ===================== FOOTER ===================== -->
+<footer class="site-footer section">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a class="brand" href="#" data-view-link="home"><span class="mark" data-icon="sheep" data-sw="1.6"></span><span>unfleece</span></a>
+        <p>Free, private PDF tools. Your files never leave your browser.</p>
+      </div>
+      <div><h4>Tools</h4><ul><li><a href="#" data-view-link="home">Organize</a></li><li><a href="#" data-view-link="home">Convert</a></li><li><a href="#" data-view-link="home">Edit</a></li><li><a href="#" data-view-link="home">Optimize</a></li><li><a href="#" data-view-link="home">Forms</a></li></ul></div>
+      <div><h4>Project</h4><ul><li><a href="#" data-view-link="style">How it works</a></li><li><a href="#" onclick="return false">GitHub ↗</a></li><li><a href="#" onclick="return false">AGPL-3.0</a></li><li><a href="#" onclick="return false">Report an issue ↗</a></li></ul></div>
+      <div><h4>Trust</h4><ul>
+        <li class="footer-check"><span data-icon="check"></span> No upload</li>
+        <li class="footer-check"><span data-icon="check"></span> No account</li>
+        <li class="footer-check"><span data-icon="check"></span> No tracking</li>
+      </ul></div>
+    </div>
+    <div class="footer-legal">
+      <span>Open source · AGPL-3.0 · No upload · No account · 🐑</span>
+      <span>© 2026 Unfleece</span>
+    </div>
+  </div>
+</footer>
+
+<!-- Reviewer-only: switch between the three deliverable mockups -->
+<aside class="demo-dock" aria-label="Demo views">
+  <span class="dd-tag">Demo</span>
+  <div class="dd-pills">
+    <button type="button" data-view-link="home" aria-current="page">Home</button>
+    <button type="button" data-view-link="tool">Tool page</button>
+    <button type="button" data-view-link="style">Design system</button>
+  </div>
+</aside>
+
+<script src="icons.js?v=6"></script>
+<script src="data.js?v=4"></script>
+<script>
+/* Populate style-tile color/category content (kept here to read against tokens) */
+(function () {
+  function getVar(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+  function swatch(name, varName, dark) {
+    return '<div class="swatch"><div class="chip-color" style="background:var(' + varName + ')' + (dark ? ';border-bottom:1px solid var(--border)' : '') + '"></div>' +
+      '<div class="meta"><div class="name">' + name + '</div><div class="hex">' + getVar(varName) + '</div></div></div>';
+  }
+  document.addEventListener('DOMContentLoaded', function () {
+    var s = document.getElementById('swatch-surfaces');
+    if (s) s.innerHTML = [['--bg', 'Background'], ['--surface-1', 'Surface 1'], ['--surface-2', 'Surface 2'], ['--surface-3', 'Surface 3'], ['--surface-4', 'Surface 4'], ['--ink', 'Ink'], ['--muted', 'Muted']]
+      .map(function (p) { return swatch(p[1], p[0], true); }).join('');
+    var sem = document.getElementById('swatch-semantic');
+    if (sem) sem.innerHTML = [['--success', 'Success'], ['--warn', 'Warning'], ['--error', 'Error'], ['--info', 'Info']]
+      .map(function (p) { return swatch(p[1], p[0]); }).join('');
+    var ramp = document.getElementById('accent-ramp');
+    if (ramp) ramp.innerHTML = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900].map(function (n) {
+      var dark = n >= 500; return '<div class="step" style="background:var(--accent-' + n + ');color:' + (dark ? '#fff' : '#04221A') + '">' + n + '</div>';
+    }).join('');
+    var cc = document.getElementById('cat-chips');
+    if (cc) cc.innerHTML = CATEGORIES.map(function (c) {
+      return '<span class="cat-chip"><span class="swatch-dot" style="background:' + c.hue + '"></span>' + c.label + '</span>';
+    }).join('');
+  });
+})();
+</script>
+<script src="app.js?v=4"></script>
+</body>
+</html>

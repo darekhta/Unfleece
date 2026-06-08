@@ -1,0 +1,15 @@
+{
+  "extends": "astro/tsconfigs/strict",
+  "include": [".astro/types.d.ts", "**/*"],
+  "exclude": ["dist", "node_modules", "core/target", "docs/design", "src/lib/wasm/pkg/*.js"],
+  "compilerOptions": {
+    "strictNullChecks": true,
+    "verbatimModuleSyntax": true,
+    "types": ["vitest/globals"],
+    "baseUrl": ".",
+    "paths": {
+      "@lib/*": ["src/lib/*"],
+      "@components/*": ["src/components/*"]
+    }
+  }
+}
