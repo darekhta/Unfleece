@@ -432,30 +432,8 @@ astro-island { display: contents; }
   border: 1px solid var(--border);
 }
 
-.locale-switcher {
-  margin-top: 2rem;
-  display: flex;
-  justify-content: center;
-  gap: 0.4rem;
-}
-.locale-switcher a {
-  min-width: 44px;
-  min-height: 36px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-xs);
-  color: var(--muted);
-  font-size: 0.8125rem;
-  font-weight: 700;
-}
-.locale-switcher a:hover,
-.locale-switcher a[aria-current="page"] {
-  border-color: var(--border-accent);
-  color: var(--ink);
-  background: var(--surface-2);
-}
+/* The per-tool language list was replaced by the header language dropdown
+   (Base.astro). hreflang alternates still ship in <head> for SEO. */
 
 /* ---------- Section heading ---------- */
 .section-head { margin-bottom: 0.5rem; }

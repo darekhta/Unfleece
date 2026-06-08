@@ -10,7 +10,7 @@ import WatermarkTool from '../../../components/editor/WatermarkTool.svelte';
 import { TOOLS, CATEGORIES, type Tool } from '../../../lib/registry';
 import {
   CATEGORY_TEXT,
-  LOCALES,
+  RUNNER_TEXT,
   NON_DEFAULT_LOCALES,
   TOOL_PAGE_TEXT,
   localizeTool,
@@ -81,7 +81,7 @@ const faqs = pageText.faqs(tool.name);
                     ? <CropTool client:load tool={tool} />
                     : tool.special === 'watermark'
                       ? <WatermarkTool client:load tool={tool} />
-                      : <ToolRunner client:load tool={tool} />
+                      : <ToolRunner client:load tool={tool} t={RUNNER_TEXT[locale]} />
           }
         </div>
       </div>
@@ -146,18 +146,6 @@ const faqs = pageText.faqs(tool.name);
           }
         </div>
       </section>
-
-      <div class="locale-switcher" aria-label="Languages">
-        {
-          toolAlternates(baseTool.slug)
-            .filter((alt) => alt.lang !== 'x-default')
-            .map((alt) => (
-              <a href={alt.path} aria-current={alt.lang === LOCALES[locale].htmlLang ? 'page' : undefined}>
-                {alt.lang.toUpperCase()}
-              </a>
-            ))
-        }
-      </div>
     </div>
   </section>
 

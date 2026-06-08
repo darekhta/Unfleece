@@ -3,12 +3,19 @@
   import { humanSize } from '../lib/download.js';
   import { fileMatchesAccept } from '../lib/handoff.js';
   import { onMount } from 'svelte';
+  import { en as enBundle } from '../lib/i18n/en.js';
+  import type { RunnerText } from '../lib/i18n/types.js';
 
   let {
     accept,
     multiple = false,
     files = $bindable([]),
-  }: { accept: string; multiple?: boolean; files?: File[] } = $props();
+    t,
+  }: { accept: string; multiple?: boolean; files?: File[]; t?: RunnerText } = $props();
+
+  // Falls back to English when a consumer (e.g. the editors) doesn't pass strings.
+  const L = $derived(t ?? enBundle.runner!);
+  const fill = (s: string, k: string, v: string) => s.replace(k, v);
 
   let dragOver = $state(false);
   let rejected = $state('');
@@ -16,7 +23,7 @@
   let hydrated = $state(false);
   let inputEl: HTMLInputElement | undefined;
 
-  const kind = $derived(accept.includes('pdf') ? 'PDF' : accept.includes('image') ? 'Image' : 'File');
+  const kind = $derived(accept.includes('pdf') ? 'PDF' : accept.includes('image') ? L.kindImage : L.kindFile);
 
   function addFiles(list: FileList | null) {
     if (!list || list.length === 0) return;
@@ -25,10 +32,10 @@
     const rejectedCount = arr.length - accepted.length;
     if (rejectedCount > 0) {
       rejected = rejectedCount === 1
-        ? `One file does not match this tool.`
-        : `${rejectedCount} files do not match this tool.`;
+        ? L.rejectedOne
+        : fill(L.rejectedMany, '{n}', String(rejectedCount));
     } else if (!multiple && accepted.length > 1) {
-      rejected = 'This tool uses one file at a time, so only the first matching file was added.';
+      rejected = L.rejectedSingle;
     } else {
       rejected = '';
     }
@@ -118,12 +125,12 @@
     ondragleave={() => (dragOver = false)}
     ondrop={onDrop}
     data-testid="dropzone"
-    aria-label="Add files — drag and drop, or activate to choose files. Files are processed on your device."
+    aria-label={L.dzAria}
   >
     <span class="dz-icon"><Icon name="upload" /></span>
-    <span class="dz-primary">Drop {multiple ? `${kind}s` : `a ${kind}`} here, or click to choose</span>
-    <span class="dz-types">{kind} · {multiple ? 'single or multiple' : 'one file'}</span>
-    <span class="dz-privacy"><Icon name="lock" /> Files stay on your device — no file upload.</span>
+    <span class="dz-primary">{fill(multiple ? L.dropMany : L.dropOne, '{kind}', kind)}</span>
+    <span class="dz-types">{fill(multiple ? L.dzTypesMany : L.dzTypesOne, '{kind}', kind)}</span>
+    <span class="dz-privacy"><Icon name="lock" /> {L.dzPrivacy}</span>
   </button>
 
   <input
@@ -138,7 +145,7 @@
 
   {#if files.length > 0}
     <div style="margin-top:1rem">
-      <div class="file-meta-label">Added files</div>
+      <div class="file-meta-label">{L.addedFiles}</div>
       <ul class="file-list">
         {#each files as file, i (file)}
           <li

@@ -3,6 +3,7 @@
   import type { RunResult } from '../lib/run.js';
   import type { RunProgress } from '../lib/progress.js';
   import type { FriendlyError } from '../lib/errors.js';
+  import type { RunnerText } from '../lib/i18n/types.js';
   import Icon from './Icon.svelte';
   import Dropzone from './Dropzone.svelte';
   import OptionsForm from './OptionsForm.svelte';
@@ -13,7 +14,7 @@
   import { friendlyError } from '../lib/errors.js';
   import { focusAfterUpdate, focusDropzoneAfterUpdate } from '../lib/focus.js';
 
-  let { tool }: { tool: Tool } = $props();
+  let { tool, t }: { tool: Tool; t: RunnerText } = $props();
 
   function initialValues(): Record<string, unknown> {
     const v: Record<string, unknown> = {};
@@ -72,14 +73,14 @@
   });
 
   const stepActive = $derived(status === 'done' ? 3 : status === 'working' ? 2 : files.length > 0 ? 1 : 0);
-  const STEPS = ['Add file', 'Set options', 'Run', 'Download'];
+  const STEPS = $derived([t.stepAdd, t.stepOptions, t.stepRun, t.stepDownload]);
 
   async function run() {
     abortController = new AbortController();
     status = 'working';
     error = null;
     result = null;
-    progress = { phase: 'loading', label: 'Preparing files…' };
+    progress = { phase: 'loading', label: t.progressFallback };
     const controller = abortController;
     try {
       const { runTool } = await import('../lib/run.js');
@@ -131,8 +132,8 @@
   <div class="alert alert-error" role="alert" data-testid="error">
     <span class="ico"><Icon name="alert" /></span>
     <div class="a-body">
-      <strong>Tool setup error.</strong>
-      <p>{tool.name} needs its dedicated editor.</p>
+      <strong>{t.setupErrorTitle}</strong>
+      <p>{t.setupErrorBody.replace('{tool}', tool.name)}</p>
     </div>
   </div>
 {:else}
@@ -146,14 +147,14 @@
 
   <div class="runner-body">
     {#if status !== 'done'}
-      <Dropzone accept={tool.accept} multiple={tool.multiple} bind:files />
+      <Dropzone accept={tool.accept} multiple={tool.multiple} bind:files {t} />
 
       {#if hasLargeFiles}
         <div class="alert alert-warn" role="status" data-testid="large-file-warning">
           <span class="ico"><Icon name="alert" /></span>
           <div class="a-body">
-            <strong>Large file warning.</strong>
-            <p>This tool still runs locally, but browser memory may make it slower or fail on this device.</p>
+            <strong>{t.largeTitle}</strong>
+            <p>{t.largeBody}</p>
           </div>
         </div>
       {/if}
@@ -163,7 +164,7 @@
       {/if}
 
       {#if status === 'working'}
-        <ProgressBlock {progress} />
+        <ProgressBlock {progress} fallback={t.progressFallback} />
       {/if}
 
       {#if status === 'error' && error}
@@ -175,15 +176,15 @@
 
       <div class="action-row">
         {#if status === 'working'}
-          <button class="btn btn-primary" disabled aria-busy="true"><span class="spinner"></span> Working…</button>
-          <button class="btn btn-ghost" type="button" data-testid="cancel-button" onclick={cancel}>Cancel</button>
+          <button class="btn btn-primary" disabled aria-busy="true"><span class="spinner"></span> {t.working}</button>
+          <button class="btn btn-ghost" type="button" data-testid="cancel-button" onclick={cancel}>{t.cancel}</button>
         {:else}
           <button class="btn btn-primary" data-testid="run-button" disabled={files.length === 0 || !optionsValid} onclick={run}>
             {tool.name} <Icon name="arrowRight" sw={2} />
           </button>
         {/if}
-        {#if status === 'error'}<button class="btn btn-ghost" onclick={reset}>Start over</button>{/if}
-        {#if files.length === 0}<span class="action-hint">Add a file first.</span>{:else if !optionsValid}<span class="action-hint">Fix highlighted options.</span>{/if}
+        {#if status === 'error'}<button class="btn btn-ghost" onclick={reset}>{t.startOver}</button>{/if}
+        {#if files.length === 0}<span class="action-hint">{t.addFileFirst}</span>{:else if !optionsValid}<span class="action-hint">{t.fixOptions}</span>{/if}
       </div>
     {/if}
 
@@ -192,9 +193,9 @@
         <div class="result-head">
           <span class="tick"><Icon name="check" /></span>
           <div>
-            <h3>Done — your file{result.files.length > 1 ? 's are' : ' is'} ready.</h3>
+            <h3>{result.files.length > 1 ? t.doneMany : t.doneOne}</h3>
             <div class="sub">
-              {#if result.text !== undefined}Review the text preview or download the result.{:else}{result.files[0].name} · {humanSize(result.files[0].blob.size)}{/if}
+              {#if result.text !== undefined}{t.reviewText}{:else}{result.files[0].name} · {humanSize(result.files[0].blob.size)}{/if}
             </div>
           </div>
         </div>
@@ -202,8 +203,8 @@
         {#if result.text !== undefined}
           <div class="text-result">
             <div class="tr-head">
-              <span class="meta">Extracted text · {result.text.length.toLocaleString()} characters</span>
-              <button class="btn btn-ghost btn-sm" onclick={copyText}><Icon name="copy" /> Copy</button>
+              <span class="meta">{t.extractedText.replace('{n}', result.text.length.toLocaleString())}</span>
+              <button class="btn btn-ghost btn-sm" onclick={copyText}><Icon name="copy" /> {t.copy}</button>
             </div>
             <pre tabindex="0" aria-label="Extracted text" data-testid="result-text">{result.text}</pre>
           </div>
@@ -224,10 +225,10 @@
           </div>
         {/if}
 
-        <div class="made-here"><Icon name="shield" /> Made right here in your browser. We never saw it.</div>
+        <div class="made-here"><Icon name="shield" /> {t.madeHere}</div>
       </div>
 
-      <div class="action-row"><button class="btn btn-ghost" onclick={reset}>Start over</button></div>
+      <div class="action-row"><button class="btn btn-ghost" onclick={reset}>{t.startOver}</button></div>
     {/if}
   </div>
 {/if}

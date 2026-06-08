@@ -83,6 +83,44 @@ export interface HomeText {
   proveSteps: { strong: string; rest: string }[];
 }
 
+/** Strings for the interactive tool runner island (ToolRunner + Dropzone).
+ * Plain strings; `{tool}`/`{n}`/`{kind}` placeholders are filled in the component. */
+export interface RunnerText {
+  stepAdd: string;
+  stepOptions: string;
+  stepRun: string;
+  stepDownload: string;
+  working: string;
+  cancel: string;
+  startOver: string;
+  addFileFirst: string;
+  fixOptions: string;
+  progressFallback: string;
+  setupErrorTitle: string;
+  setupErrorBody: string; // "{tool} needs its dedicated editor."
+  largeTitle: string;
+  largeBody: string;
+  doneOne: string;
+  doneMany: string;
+  reviewText: string;
+  extractedText: string; // "Extracted text · {n} characters"
+  copy: string;
+  madeHere: string;
+  // Dropzone
+  kindImage: string;
+  kindFile: string;
+  dropOne: string; // "Drop a {kind} here, or click to choose"
+  dropMany: string; // "Drop {kind}s here, or click to choose"
+  dzTypesOne: string; // "{kind} · one file"
+  dzTypesMany: string; // "{kind} · single or multiple"
+  dzPrivacy: string;
+  dzAria: string;
+  addedFiles: string;
+  rejectedOne: string;
+  rejectedMany: string; // "{n} files do not match this tool."
+  rejectedSingle: string;
+}
+
 export interface ToolText {
   name: string;
   tagline: string;
@@ -98,6 +136,8 @@ export interface LocaleBundle {
   layout: LayoutText;
   toolPage: ToolPageText;
   home: HomeText;
+  /** Interactive runner island strings (optional; falls back to English). */
+  runner?: RunnerText;
   /** Empty for English (the registry already holds the source strings). */
   tools: ToolTextMap;
 }

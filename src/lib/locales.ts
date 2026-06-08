@@ -10,6 +10,7 @@ import type {
   LayoutText,
   LocaleBundle,
   LocaleMeta,
+  RunnerText,
   ToolPageText,
   ToolText,
 } from './i18n/types.js';
@@ -27,7 +28,7 @@ import { ja } from './i18n/ja.js';
 import { it } from './i18n/it.js';
 import { uk } from './i18n/uk.js';
 
-export type { LayoutText, ToolPageText, HomeText, CategoryText, LocaleMeta, ToolText, Dir };
+export type { LayoutText, ToolPageText, HomeText, CategoryText, LocaleMeta, ToolText, RunnerText, Dir };
 
 export type Locale = 'en' | 'zh' | 'hi' | 'es' | 'fr' | 'ar' | 'pt' | 'ru' | 'de' | 'ja' | 'it' | 'uk';
 export type NonDefaultLocale = Exclude<Locale, 'en'>;
@@ -71,6 +72,11 @@ export const TOOL_PAGE_TEXT = Object.fromEntries(
 export const HOME_TEXT = Object.fromEntries(
   ALL_LOCALES.map((l) => [l, BUNDLES[l].home]),
 ) as Record<Locale, HomeText>;
+
+/** Interactive runner island strings, with English fallback for partial bundles. */
+export const RUNNER_TEXT = Object.fromEntries(
+  ALL_LOCALES.map((l) => [l, BUNDLES[l].runner ?? en.runner!]),
+) as Record<Locale, RunnerText>;
 
 /** Apply a locale's tool name/tagline/description, falling back to English. */
 export function localizeTool(tool: Tool, locale: Locale): Tool {
