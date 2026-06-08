@@ -10,7 +10,7 @@
   import Handle from './editor/Handle.svelte';
   import SignatureModal, { type NewSignature } from './SignatureModal.svelte';
   import { startDrag } from '../lib/browser/useDrag.js';
-  import { downloadBlob, humanSize } from '../lib/download.js';
+  import { downloadBlob, humanSize, outputBaseName } from '../lib/download.js';
   import { takePendingFiles } from '../lib/handoff.js';
   import { friendlyError } from '../lib/errors.js';
   import { focusAfterUpdate, focusDropzoneAfterUpdate } from '../lib/focus.js';
@@ -266,7 +266,7 @@
       const { stampImageMany } = await import('../lib/tools/sign.js');
       const out = await stampImageMany(bytes, stamps);
       resultBlob = new Blob([out as BlobPart], { type: 'application/pdf' });
-      resultName = files[0].name.replace(/\.[^.]+$/, '') + '-signed.pdf';
+      resultName = outputBaseName(files[0].name) + '-signed.pdf';
       status = 'done';
       await focusAfterUpdate(() => resultEl);
     } catch (e) {

@@ -1,0 +1,103 @@
+// English — the canonical source bundle. Every other locale is translated from
+// this file and falls back to it for anything missing.
+import type { LocaleBundle } from './types.js';
+
+export const en: LocaleBundle = {
+  meta: { code: 'en', htmlLang: 'en', autonym: 'English', englishName: 'English', dir: 'ltr' },
+  categories: {
+    organize: { label: 'Organize', descriptor: 'Reorder, merge, split, rotate' },
+    convert: { label: 'Convert', descriptor: 'Move between PDF, image and text' },
+    edit: { label: 'Edit', descriptor: 'Stamp, mark up and sign pages' },
+    optimize: { label: 'Optimize', descriptor: 'Make files smaller' },
+    forms: { label: 'Forms', descriptor: 'Detect and fill form fields' },
+    security: { label: 'Security & Privacy', descriptor: 'Strip what you do not want to share' },
+  },
+  layout: {
+    skip: 'Skip to content',
+    homeAria: 'Unfleece home',
+    navAria: 'Primary',
+    allTools: 'All tools',
+    howItWorks: 'How it works',
+    privacy: 'Privacy',
+    footerBlurb: 'Free, private PDF tools. Your files never leave your browser.',
+    tools: 'Tools',
+    project: 'Project',
+    trust: 'Trust',
+    github: 'GitHub ↗',
+    license: 'AGPL-3.0',
+    reportIssue: 'Report an issue ↗',
+    noUpload: 'No upload',
+    noAccount: 'No account',
+    noTracking: 'No tracking',
+    language: 'Language',
+    open: 'Open',
+  },
+  toolPage: {
+    breadcrumbHome: 'Home',
+    breadcrumbTools: 'Tools',
+    privateWorkspace: 'Private workspace',
+    nothingUploaded: 'Nothing uploaded',
+    howEyebrow: 'How it works',
+    howHeading: (toolName) => `How to ${toolName.toLowerCase()}`,
+    steps: [
+      { title: 'Add your file', body: 'Drop it in or click to choose. It stays on your device.' },
+      { title: 'Set options', body: 'Tweak the settings, or just use the sensible defaults.' },
+      { title: 'Download the result', body: 'One click. It was built right here, in your browser.' },
+    ],
+    differenceEyebrow: 'The honest difference',
+    differenceHeading: 'Why Unfleece vs fleeceware',
+    usBullets: ['Runs in your browser — no upload', 'Free, no account, no card', 'Open source (AGPL-3.0)', 'No file-size paywall'],
+    themHeading: 'Typical fleeceware site',
+    themBullets: ['Uploads your file to a server', '$1 trial → ~$50 / week', 'Closed and opaque', 'Locks results behind pay'],
+    questionsEyebrow: 'Questions',
+    questionsHeading: 'Frequently asked',
+    relatedEyebrow: 'Keep going',
+    relatedHeading: 'Related tools',
+    faqs: (toolName) => [
+      {
+        q: `Is ${toolName} really free?`,
+        a: 'Yes — free, forever, no account and no trial that bites. There is no server bill to recover because nothing is uploaded.',
+      },
+      {
+        q: 'Are my files uploaded anywhere?',
+        a: `No. Your browser reads the file into memory and runs ${toolName} on your device. Open the Network tab and watch — you will see zero upload requests.`,
+      },
+      {
+        q: 'Is there a file-size or page limit?',
+        a: 'No hard limit. The only ceiling is your browser memory, so very large files may be slow. We warn you before that becomes a problem.',
+      },
+      {
+        q: 'Does it work offline?',
+        a: 'Once the page has loaded, yes. You can turn off Wi-Fi and it still works — the strongest proof that nothing leaves your device.',
+      },
+    ],
+  },
+  home: {
+    heroLine1: 'Free, private PDF tools.',
+    heroLine2: 'Your files never leave your browser.',
+    subhead:
+      'Merge, split, convert, sign and compress — every tool runs entirely on your device. Free forever, no account, no upload. Open source, and honest about it.',
+    browseCta: 'Browse tools',
+    howCta: 'How it works',
+    proof: [
+      { title: 'Private by design', body: 'Files are processed locally and never uploaded.', linkLabel: 'Verify in your Network tab.' },
+      { title: 'Free forever', body: 'No trials, no subscriptions, no file-size paywalls. There is nothing to upsell.' },
+      { title: 'Fast & open', body: 'Runs locally via WebAssembly. Fully open source (AGPL-3.0).' },
+    ],
+    toolsEyebrow: 'All tools',
+    pickHeading: 'Pick a tool — it opens, you run it, you download.',
+    pickBody: 'No sign-up. No queue. Everything happens in this tab.',
+    proveEyebrow: 'Don’t trust us — verify it',
+    proveHeading: 'It works in 10 seconds, and you can prove it’s private.',
+    proveBody:
+      'No file ever touches a server, so there is nothing to bill you for and nothing to leak. Free is just the honest default.',
+    proveSteps: [
+      { strong: 'Open any tool', rest: ' and press F12 → Network tab.' },
+      { strong: 'Run it on a file.', rest: ' Watch the request list.' },
+      { strong: 'See nothing upload.', rest: ' Turn off Wi-Fi — it still works.' },
+    ],
+  },
+  tools: {},
+};
+
+export default en;

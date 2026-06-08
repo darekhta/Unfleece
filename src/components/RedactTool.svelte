@@ -9,7 +9,7 @@
   import PdfStage, { type StageInfo } from './editor/PdfStage.svelte';
   import Handle from './editor/Handle.svelte';
   import { startDrag } from '../lib/browser/useDrag.js';
-  import { downloadBlob, humanSize } from '../lib/download.js';
+  import { downloadBlob, humanSize, outputBaseName } from '../lib/download.js';
   import { takePendingFiles } from '../lib/handoff.js';
   import { friendlyError } from '../lib/errors.js';
   import { focusAfterUpdate, focusDropzoneAfterUpdate } from '../lib/focus.js';
@@ -172,7 +172,7 @@
         scale,
       }, { onProgress: (next) => (progress = next) });
       resultBlob = new Blob([out as BlobPart], { type: 'application/pdf' });
-      resultName = files[0].name.replace(/\.[^.]+$/, '') + '-redacted.pdf';
+      resultName = outputBaseName(files[0].name) + '-redacted.pdf';
       status = 'done';
       await focusAfterUpdate(() => resultEl);
     } catch (e) {

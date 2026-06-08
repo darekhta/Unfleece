@@ -7,7 +7,7 @@
   import Dropzone from '../Dropzone.svelte';
   import ProgressBlock from '../ProgressBlock.svelte';
   import PdfStage, { type StageInfo } from './PdfStage.svelte';
-  import { downloadBlob, humanSize } from '../../lib/download.js';
+  import { downloadBlob, humanSize, outputBaseName } from '../../lib/download.js';
   import { takePendingFiles } from '../../lib/handoff.js';
   import { friendlyError } from '../../lib/errors.js';
   import { focusAfterUpdate, focusDropzoneAfterUpdate } from '../../lib/focus.js';
@@ -53,7 +53,7 @@
         createProgressProxy((next) => (progress = next)),
       );
       resultBlob = new Blob([out as BlobPart], { type: 'application/pdf' });
-      resultName = files[0].name.replace(/\.[^.]+$/, '') + '-watermarked.pdf';
+      resultName = outputBaseName(files[0].name) + '-watermarked.pdf';
       status = 'done';
       await focusAfterUpdate(() => resultEl);
     } catch (e) {

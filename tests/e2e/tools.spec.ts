@@ -57,7 +57,7 @@ test('drag-and-drop works on a tool page', async ({ page }) => {
   await page.goto('/tools/merge-pdf');
   await dropFile(page, 'dropzone', 'a.pdf', await samplePdfBuffer(2), 'application/pdf');
   await expect(page.getByTestId('run-button')).toBeEnabled();
-  expect(await runAndDownload(page)).toBe('merged.pdf');
+  expect(await runAndDownload(page)).toBe('a-merged.pdf');
 });
 
 test('hero quick-start hands a dropped file to a tool', async ({ page }) => {
@@ -66,7 +66,7 @@ test('hero quick-start hands a dropped file to a tool', async ({ page }) => {
   await page.getByRole('button', { name: 'Merge PDF' }).click();
   await page.waitForURL('**/tools/merge-pdf');
   await expect(page.getByTestId('run-button')).toBeEnabled(); // file auto-loaded via handoff
-  expect(await runAndDownload(page)).toBe('merged.pdf');
+  expect(await runAndDownload(page)).toBe('report-merged.pdf');
 });
 
 test('home page lists tools', async ({ page }) => {
@@ -113,13 +113,13 @@ test('localized Ukrainian tool page renders and still runs the tool', async ({ p
   await expect(page.locator('html')).toHaveAttribute('lang', 'uk');
   await expect(page.getByRole('heading', { level: 1 })).toContainText("Об'єднати PDF");
   await expect(page.locator('link[rel="alternate"][hreflang="it"]')).toHaveAttribute('href', /\/it\/tools\/merge-pdf$/);
-  await expect(page.getByRole('link', { name: 'UK', exact: true })).toHaveAttribute('aria-current', 'page');
+  await expect(page.locator('.lang-current')).toHaveText('Українська');
 
   await setFiles(page, [
     pdfFile('a.pdf', await samplePdfBuffer(1)),
     pdfFile('b.pdf', await samplePdfBuffer(1)),
   ]);
-  expect(await runAndDownload(page)).toBe('merged.pdf');
+  expect(await runAndDownload(page)).toBe('a+1-merged.pdf');
 });
 
 test('localized Italian tool page and sitemap expose hreflang alternates', async ({ page, request }) => {
@@ -127,7 +127,8 @@ test('localized Italian tool page and sitemap expose hreflang alternates', async
   await expect(page.locator('html')).toHaveAttribute('lang', 'it');
   await expect(page.getByRole('heading', { level: 1 })).toContainText('Comprimi immagine');
   await expect(page.locator('link[rel="alternate"][hreflang="uk"]')).toHaveAttribute('href', /\/uk\/tools\/compress-image$/);
-  await expect(page.getByRole('link', { name: 'IT', exact: true })).toHaveAttribute('aria-current', 'page');
+  // the switcher trigger shows the current locale's autonym
+  await expect(page.locator('.lang-current')).toHaveText('Italiano');
 
   const response = await request.get('/sitemap.xml');
   expect(response.ok()).toBe(true);
@@ -135,6 +136,41 @@ test('localized Italian tool page and sitemap expose hreflang alternates', async
   expect(xml).toContain('https://unfleece.com/uk/tools/merge-pdf');
   expect(xml).toContain('https://unfleece.com/it/tools/compress-image');
   expect(xml).toContain('hreflang="x-default"');
+});
+
+test('language switcher lists autonyms and links to the equivalent localized page', async ({ page }) => {
+  await page.goto('/tools/merge-pdf');
+  await page.locator('#lang-menu > summary').click(); // open the <details> dropdown
+  const menu = page.locator('#lang-menu');
+  // autonyms in native script, no English-only names
+  await expect(menu.locator('.lang-name', { hasText: '中文' })).toBeVisible();
+  await expect(menu.locator('.lang-name', { hasText: 'العربية' })).toBeVisible();
+  await expect(menu.locator('.lang-name', { hasText: 'Español' })).toBeVisible();
+  // each option points at the same tool in that locale (trailing slash per Astro config)
+  await expect(menu.locator('a[data-locale="uk"]')).toHaveAttribute('href', /^\/uk\/tools\/merge-pdf\/?$/);
+  await expect(menu.locator('a[data-locale="en"]')).toHaveAttribute('href', /^\/tools\/merge-pdf\/?$/);
+});
+
+test('switching language persists the choice and is not auto-overridden', async ({ page }) => {
+  await page.goto('/');
+  await page.locator('#lang-menu > summary').click();
+  await page.locator('#lang-menu a[data-locale="es"]').click();
+  await page.waitForURL('**/es');
+  await expect(page.locator('html')).toHaveAttribute('lang', 'es');
+  expect(await page.evaluate(() => localStorage.getItem('uf-lang'))).toBe('es');
+  // a deep-linked localized URL is honored (explicit choice), not auto-redirected
+  await page.goto('/ar/tools/merge-pdf');
+  await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
+  await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+});
+
+test('auto-detect routes a Spanish browser to the Spanish homepage once', async ({ browser }) => {
+  const context = await browser.newContext({ locale: 'es-ES' });
+  const page = await context.newPage();
+  await page.goto('/');
+  await page.waitForURL('**/es', { timeout: 10000 });
+  await expect(page.locator('html')).toHaveAttribute('lang', 'es');
+  await context.close();
 });
 
 test('crop editor renders the page and applies', async ({ page }) => {
@@ -269,7 +305,7 @@ test('merge two PDFs (and never uploads)', async ({ page }) => {
   await expect(page.locator('.file-row .f-name').first()).toHaveText('b.pdf');
   await page.getByRole('button', { name: 'Move b.pdf down' }).click();
   await expect(page.locator('.file-row .f-name').first()).toHaveText('a.pdf');
-  expect(await runAndDownload(page)).toBe('merged.pdf');
+  expect(await runAndDownload(page)).toBe('a+1-merged.pdf');
 
   // Privacy guarantee: nothing was uploaded.
   expect(posts, `unexpected upload requests: ${posts.join(', ')}`).toHaveLength(0);
@@ -364,7 +400,7 @@ test('auto-crop margins creates a PDF', async ({ page }) => {
 test('images to PDF', async ({ page }) => {
   await page.goto('/tools/images-to-pdf');
   await setFiles(page, [pngFile('img.png', PNG_1x1)]);
-  expect(await runAndDownload(page)).toBe('images.pdf');
+  expect(await runAndDownload(page)).toBe('img.pdf');
 });
 
 test('PDF to JPG (pdf.js render) yields a zip', async ({ page }) => {
@@ -510,7 +546,7 @@ test('optimize a PDF (Rust→WASM engine)', async ({ page }) => {
   expect(await runAndDownload(page)).toContain('optimized');
 });
 
-test('compress a PDF with Ghostscript WASM', async ({ page }) => {
+test('compress a PDF', async ({ page }) => {
   await page.goto('/tools/compress-pdf');
   await setFiles(page, [pdfFile('doc.pdf', await samplePdfBuffer(2))]);
   expect(await runAndDownload(page, 60000)).toContain('compressed');

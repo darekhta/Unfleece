@@ -17,7 +17,7 @@ describe('annotate', () => {
     const events: string[] = [];
     await addPageNumbers(pdf, { format: '{n}' }, (progress) => events.push(progress.label));
 
-    expect(events[0]).toBe('Adding page numbers in Rust core…');
+    expect(events[0]).toBe('Adding page numbers…');
     expect(events.at(-1)).toBe('Saving numbered PDF…');
   });
 
@@ -39,7 +39,7 @@ describe('annotate', () => {
     const events: string[] = [];
     await addTextWatermark(pdf, { text: 'CONFIDENTIAL' }, (progress) => events.push(progress.label));
 
-    expect(events[0]).toBe('Adding watermark in Rust core…');
+    expect(events[0]).toBe('Adding watermark…');
     expect(events.at(-1)).toBe('Saving watermarked PDF…');
   });
 });
@@ -59,7 +59,7 @@ describe('cropPdf', () => {
     const events: string[] = [];
     await cropPdf(pdf, { left: 10 }, (progress) => events.push(progress.label));
 
-    expect(events[0]).toBe('Cropping pages in Rust core…');
+    expect(events[0]).toBe('Cropping pages…');
     expect(events.at(-1)).toBe('Saving cropped PDF…');
   });
 

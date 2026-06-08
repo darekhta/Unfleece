@@ -136,7 +136,7 @@ describe('organize', () => {
 
     await bookletPdf(pdf, {}, onProgress);
 
-    expect(onProgress).toHaveBeenCalledWith(expect.objectContaining({ label: 'Creating 2 booklet spreads in Rust core…', current: 0, total: 2 }));
+    expect(onProgress).toHaveBeenCalledWith(expect.objectContaining({ label: 'Creating 2 booklet spreads…', current: 0, total: 2 }));
     expect(onProgress).toHaveBeenCalledWith(expect.objectContaining({ current: 2, total: 2 }));
   });
 });

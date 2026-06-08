@@ -1,0 +1,31 @@
+---
+import Base from '../../layouts/Base.astro';
+import HomePage from '../../components/HomePage.astro';
+import {
+  NON_DEFAULT_LOCALES,
+  HOME_TEXT,
+  LAYOUT_TEXT,
+  homeAlternates,
+  localizedPath,
+  type NonDefaultLocale,
+} from '../../lib/locales';
+
+export function getStaticPaths() {
+  return NON_DEFAULT_LOCALES.map((locale) => ({ params: { locale }, props: { locale } }));
+}
+
+const { locale } = Astro.props as { locale: NonDefaultLocale };
+const h = HOME_TEXT[locale];
+const t = LAYOUT_TEXT[locale];
+const title = `${h.heroLine1} ${h.heroLine2}`;
+---
+
+<Base
+  lang={locale}
+  title={title}
+  description={h.subhead}
+  canonicalPath={localizedPath(locale, '/')}
+  alternates={homeAlternates()}
+>
+  <HomePage locale={locale} />
+</Base>

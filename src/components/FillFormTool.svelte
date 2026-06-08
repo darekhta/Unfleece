@@ -5,7 +5,7 @@
   import Icon from './Icon.svelte';
   import Dropzone from './Dropzone.svelte';
   import ProgressBlock from './ProgressBlock.svelte';
-  import { downloadBlob, humanSize } from '../lib/download.js';
+  import { downloadBlob, humanSize, outputBaseName } from '../lib/download.js';
   import { onMount } from 'svelte';
   import { takePendingFiles } from '../lib/handoff.js';
   import { friendlyError } from '../lib/errors.js';
@@ -80,7 +80,7 @@
       const bytes = new Uint8Array(await files[0].arrayBuffer());
       const out = await getPdfWorker().fillForm(bytes, values);
       resultBlob = new Blob([out as BlobPart], { type: 'application/pdf' });
-      resultName = files[0].name.replace(/\.[^.]+$/, '') + '-filled.pdf';
+      resultName = outputBaseName(files[0].name) + '-filled.pdf';
       status = 'done';
       await focusAfterUpdate(() => resultEl);
     } catch (e) {

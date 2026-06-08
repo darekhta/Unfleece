@@ -20,7 +20,7 @@ import {
 export async function extractPages(bytes: Uint8Array, indices: number[], onProgress?: ProgressCallback): Promise<Uint8Array> {
   if (indices.length === 0) throw new Error('No pages selected');
   if (new Set(indices).size !== indices.length) throw new Error('Duplicate pages selected');
-  notifyProgress(onProgress, { phase: 'working', label: `Copying ${indices.length} selected pages with Rust core…`, current: 0, total: indices.length });
+  notifyProgress(onProgress, { phase: 'working', label: `Copying ${indices.length} selected pages…`, current: 0, total: indices.length });
   const out = await wasmSelectPages(bytes, indices);
   notifyProgress(onProgress, { phase: 'working', label: `Copied ${indices.length} selected pages.`, current: indices.length, total: indices.length });
   return out;
@@ -81,7 +81,7 @@ export async function rotatePdf(
 ): Promise<Uint8Array> {
   if (angle % 90 !== 0) throw new Error('Rotation must be a multiple of 90°');
   const total = indices ? indices.length : await wasmPageCount(bytes);
-  notifyProgress(onProgress, { phase: 'working', label: `Rotating ${total} page${total === 1 ? '' : 's'} in Rust core…`, current: 0, total });
+  notifyProgress(onProgress, { phase: 'working', label: `Rotating ${total} page${total === 1 ? '' : 's'}…`, current: 0, total });
   const out = indices
     ? await wasmRotatePages(bytes, indices, angle)
     : await wasmRotateAll(bytes, angle);
@@ -95,7 +95,7 @@ const N_UP_PER_SHEET = new Set([2, 4, 6, 8, 9, 16]);
 /** Place N source pages onto each output A4 page (handout / booklet-style). */
 export async function nUpPdf(bytes: Uint8Array, perSheet: number, onProgress?: ProgressCallback): Promise<Uint8Array> {
   if (!N_UP_PER_SHEET.has(perSheet)) throw new Error(`Unsupported pages-per-sheet: ${perSheet}`);
-  notifyProgress(onProgress, { phase: 'working', label: `Placing ${perSheet} pages per sheet in Rust core…`, current: 0, total: 1 });
+  notifyProgress(onProgress, { phase: 'working', label: `Placing ${perSheet} pages per sheet…`, current: 0, total: 1 });
   const out = await wasmNUp(bytes, perSheet);
   notifyProgress(onProgress, { phase: 'working', label: 'Created N-up sheets.', current: 1, total: 1 });
   return out;
@@ -116,7 +116,7 @@ export async function bookletPdf(bytes: Uint8Array, options: BookletOptions = {}
   const pages = await wasmPageCount(bytes);
   if (pages === 0) throw new Error('No pages found');
   const spreads = Math.ceil(pages / 4) * 2;
-  notifyProgress(onProgress, { phase: 'working', label: `Creating ${spreads} booklet spreads in Rust core…`, current: 0, total: spreads });
+  notifyProgress(onProgress, { phase: 'working', label: `Creating ${spreads} booklet spreads…`, current: 0, total: spreads });
   const opts: Record<string, unknown> = {};
   if (options.pageSize !== undefined) opts.pageSize = options.pageSize;
   if (options.binding !== undefined) opts.binding = options.binding;

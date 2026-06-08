@@ -18,7 +18,7 @@ export interface CropMargins {
  */
 export async function cropPdf(bytes: Uint8Array, margins: CropMargins, onProgress?: ProgressCallback): Promise<Uint8Array> {
   const { top = 0, right = 0, bottom = 0, left = 0 } = margins;
-  notifyProgress(onProgress, { phase: 'working', label: 'Cropping pages in Rust core…' });
+  notifyProgress(onProgress, { phase: 'working', label: 'Cropping pages…' });
   const out = await wasmCropMargins(bytes, top, right, bottom, left);
   notifyProgress(onProgress, { phase: 'saving', label: 'Saving cropped PDF…' });
   return out;

@@ -26,7 +26,7 @@ export async function imagesToPdf(
 ): Promise<Uint8Array> {
   if (images.length === 0) throw new Error('No images provided');
   const { pageSize = 'fit', margin = 24 } = opts;
-  notifyProgress(onProgress, { phase: 'working', label: `Building a ${images.length}-page PDF in Rust core…`, current: 0, total: images.length });
+  notifyProgress(onProgress, { phase: 'working', label: `Building a ${images.length}-page PDF…`, current: 0, total: images.length });
   const out = await wasmImagesToPdf(images, { pageSize, margin });
   notifyProgress(onProgress, { phase: 'working', label: `Added ${images.length} image${images.length === 1 ? '' : 's'}.`, current: images.length, total: images.length });
   return out;

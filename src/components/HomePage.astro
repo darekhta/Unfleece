@@ -1,0 +1,107 @@
+---
+import Icon from './Icon.astro';
+import ToolCard from './ToolCard.astro';
+import HeroDrop from './HeroDrop.svelte';
+import { toolsByCategory } from '../lib/registry';
+import { CATEGORY_TEXT, HOME_TEXT, type Locale } from '../lib/locales';
+
+const { locale = 'en' } = Astro.props as { locale?: Locale };
+const groups = toolsByCategory();
+const h = HOME_TEXT[locale];
+const cats = CATEGORY_TEXT[locale];
+// About is English-only for now; link directly (no localized URL exists).
+const aboutHref = '/about';
+---
+
+<!-- Hero -->
+<section class="hero section">
+  <div class="container">
+    <div class="hero-grid">
+      <div class="hero-text">
+        <h1 class="hero-display">
+          {h.heroLine1}<br />
+          <span class="gradient-word">{h.heroLine2}</span>
+        </h1>
+        <p class="subhead body-lg">{h.subhead}</p>
+        <div class="hero-ctas">
+          <a class="btn btn-primary btn-lg" href="#tools-section">{h.browseCta} <Icon name="arrowRight" sw={2} /></a>
+          <a class="btn btn-ghost btn-lg" href={aboutHref}>{h.howCta}</a>
+        </div>
+      </div>
+
+      <!-- Proof panel: a real quick-start — drop a file, pick a tool (file is handed over, never uploaded) -->
+      <HeroDrop client:load />
+    </div>
+  </div>
+</section>
+
+<!-- Trust strip -->
+<section class="section">
+  <div class="container">
+    <div class="trust-strip">
+      <div class="trust-card glass">
+        <span class="chip"><Icon name="shield" /></span>
+        <h3 class="h4">{h.proof[0].title}</h3>
+        <p class="body-sm">{h.proof[0].body} {h.proof[0].linkLabel && <a href={`${aboutHref}#privacy`}>{h.proof[0].linkLabel}</a>}</p>
+      </div>
+      <div class="trust-card glass">
+        <span class="chip cat-forms"><Icon name="sparkle" /></span>
+        <h3 class="h4">{h.proof[1].title}</h3>
+        <p class="body-sm">{h.proof[1].body}</p>
+      </div>
+      <div class="trust-card glass">
+        <span class="chip cat-convert"><Icon name="optimize" /></span>
+        <h3 class="h4">{h.proof[2].title}</h3>
+        <p class="body-sm">{h.proof[2].body}</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Bento tool grid -->
+<section class="section" id="tools-section" style="margin-top:4rem; scroll-margin-top:84px">
+  <div class="container">
+    <div class="section-head">
+      <span class="eyebrow">{h.toolsEyebrow}</span>
+      <h2 class="h2">{h.pickHeading}</h2>
+      <p class="body">{h.pickBody}</p>
+    </div>
+
+    {
+      groups.map((g) => (
+        <section class="cat-band" id={`cat-${g.category}`} aria-labelledby={`h-${g.category}`}>
+          <div class="cat-divider">
+            <span class="eyebrow cat-eyebrow" id={`h-${g.category}`}>
+              <span class="swatch" style={`background:${g.meta.hue}`} />
+              {cats[g.category].label}
+            </span>
+            <span class="descriptor">{cats[g.category].descriptor}</span>
+          </div>
+          <div class="bento">
+            {g.tools.map((tool) => (
+              <ToolCard tool={tool} locale={locale} />
+            ))}
+          </div>
+        </section>
+      ))
+    }
+  </div>
+</section>
+
+<!-- Reassurance band -->
+<section class="section" id="how-section" style="margin-top:5rem; scroll-margin-top:84px">
+  <div class="container">
+    <div class="reassure glass">
+      <div>
+        <span class="eyebrow accent-text" style="display:block;margin-bottom:.75rem">{h.proveEyebrow}</span>
+        <h2 class="h2">{h.proveHeading}</h2>
+        <p class="body">{h.proveBody}</p>
+      </div>
+      <div class="steps">
+        {h.proveSteps.map((s, i) => (
+          <div class="step"><span class="n">{i + 1}</span><p><strong>{s.strong}</strong>{s.rest}</p></div>
+        ))}
+      </div>
+    </div>
+  </div>
+</section>

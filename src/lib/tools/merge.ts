@@ -9,7 +9,7 @@ import { wasmMergePdfs } from '../wasm/core.js';
  */
 export async function mergePdfs(files: Uint8Array[], onProgress?: ProgressCallback): Promise<Uint8Array> {
   if (files.length === 0) throw new Error('No files to merge');
-  notifyProgress(onProgress, { phase: 'working', label: `Merging ${files.length} file${files.length === 1 ? '' : 's'} in Rust core…`, current: 0, total: files.length });
+  notifyProgress(onProgress, { phase: 'working', label: `Merging ${files.length} file${files.length === 1 ? '' : 's'}…`, current: 0, total: files.length });
   const out = await wasmMergePdfs(files);
   notifyProgress(onProgress, { phase: 'working', label: `Merged ${files.length} file${files.length === 1 ? '' : 's'}.`, current: files.length, total: files.length });
   return out;

@@ -46,7 +46,7 @@ function presetForOptions(opts: CompressOptions): NonNullable<CompressOptions['p
 
 async function ghostscriptCompressPdf(bytes: Uint8Array, opts: CompressOptions = {}, run: RunOptions = {}): Promise<Uint8Array> {
   const preset = presetForOptions(opts);
-  reportProgress(run, { phase: 'loading', label: 'Loading Ghostscript WASM…' });
+  reportProgress(run, { phase: 'loading', label: 'Preparing the compressor…' });
   const module = await loadGhostscriptModule();
   throwIfAborted(run.signal);
 
@@ -58,7 +58,7 @@ async function ghostscriptCompressPdf(bytes: Uint8Array, opts: CompressOptions =
   unlinkQuietly(module, output);
   module.FS.writeFile(input, bytes);
 
-  reportProgress(run, { phase: 'compressing', label: `Compressing with Ghostscript /${preset}…` });
+  reportProgress(run, { phase: 'compressing', label: `Compressing…` });
   const status = module.callMain([
     '-q',
     '-dSAFER',
@@ -146,7 +146,7 @@ export async function compressPdf(bytes: Uint8Array, opts: CompressOptions = {},
     return await ghostscriptCompressPdf(bytes, opts, run);
   } catch (error) {
     if (run.signal?.aborted) throw abortError();
-    reportProgress(run, { phase: 'compressing', label: 'Ghostscript failed; using raster fallback…' });
+    reportProgress(run, { phase: 'compressing', label: 'Trying a different compression method…' });
     return rasterCompressPdf(bytes, opts, run);
   }
 }

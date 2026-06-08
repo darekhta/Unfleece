@@ -9,7 +9,7 @@
   import PdfStage, { type StageInfo } from './PdfStage.svelte';
   import Handle from './Handle.svelte';
   import { startDrag } from '../../lib/browser/useDrag.js';
-  import { downloadBlob, humanSize } from '../../lib/download.js';
+  import { downloadBlob, humanSize, outputBaseName } from '../../lib/download.js';
   import { takePendingFiles } from '../../lib/handoff.js';
   import { friendlyError } from '../../lib/errors.js';
   import { focusAfterUpdate, focusDropzoneAfterUpdate } from '../../lib/focus.js';
@@ -111,7 +111,7 @@
         bottom: Math.max(0, margins.bottom), left: Math.max(0, margins.left),
       }, createProgressProxy((next) => (progress = next)));
       resultBlob = new Blob([out as BlobPart], { type: 'application/pdf' });
-      resultName = files[0].name.replace(/\.[^.]+$/, '') + '-cropped.pdf';
+      resultName = outputBaseName(files[0].name) + '-cropped.pdf';
       status = 'done';
       await focusAfterUpdate(() => resultEl);
     } catch (e) {

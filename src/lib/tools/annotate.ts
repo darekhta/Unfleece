@@ -25,7 +25,7 @@ export async function addPageNumbers(
   opts: PageNumberOptions = {},
   onProgress?: ProgressCallback,
 ): Promise<Uint8Array> {
-  notifyProgress(onProgress, { phase: 'working', label: 'Adding page numbers in Rust core…' });
+  notifyProgress(onProgress, { phase: 'working', label: 'Adding page numbers…' });
   const out = await wasmAddPageNumbers(bytes, { ...opts });
   notifyProgress(onProgress, { phase: 'saving', label: 'Saving numbered PDF…' });
   return out;
@@ -46,7 +46,7 @@ export async function addTextWatermark(
   onProgress?: ProgressCallback,
 ): Promise<Uint8Array> {
   // The Rust core rejects empty/missing text with 'Watermark text is required'.
-  notifyProgress(onProgress, { phase: 'working', label: 'Adding watermark in Rust core…' });
+  notifyProgress(onProgress, { phase: 'working', label: 'Adding watermark…' });
   const out = await wasmAddWatermark(bytes, { ...opts });
   notifyProgress(onProgress, { phase: 'saving', label: 'Saving watermarked PDF…' });
   return out;

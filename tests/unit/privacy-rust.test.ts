@@ -224,11 +224,12 @@ describe('sanitizePdf (Rust core)', () => {
     expect(await pageCount(out)).toBe(1);
   });
 
-  it('keeps all pages of a multi-page document and reports Rust-core progress', async () => {
+  it('keeps all pages of a multi-page document and reports progress', async () => {
     const events: { phase: string; label: string }[] = [];
     const out = await sanitizePdf(await makeSamplePdf(5), {}, (p) => events.push({ phase: p.phase, label: p.label }));
     expect(await pageCount(out)).toBe(5);
-    expect(events[0]?.label).toContain('Rust core');
+    expect(events[0]?.phase).toBe('working');
+    expect(events[0]?.label).toContain('Sanitizing');
     expect(events.at(-1)?.phase).toBe('saving');
   });
 

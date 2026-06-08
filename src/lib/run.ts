@@ -14,6 +14,7 @@ import { EPUB_MIME, fixedPagesToEpub, textPagesToEpub } from './tools/epub.js';
 import { textToPdf } from './tools/documentPdf.js';
 import type { Tool } from './registry.js';
 import { fileMatchesAccept } from './handoff.js';
+import { outputBaseName } from './download.js';
 import { abortError, reportProgress, throwIfAborted, type ProgressCallback, type RunOptions } from './progress.js';
 
 export interface RunResult {
@@ -21,7 +22,7 @@ export interface RunResult {
   text?: string;
 }
 
-const baseName = (name: string) => name.replace(/\.[^.]+$/, '');
+const baseName = (name: string) => outputBaseName(name);
 const toBytes = async (f: File) => new Uint8Array(await f.arrayBuffer());
 const pdfBlob = (bytes: Uint8Array) => new Blob([bytes as BlobPart], { type: 'application/pdf' });
 const officeBlob = (bytes: Uint8Array, type: string) => new Blob([bytes as BlobPart], { type });
@@ -104,13 +105,16 @@ export async function runTool(tool: Tool, inputs: File[], rawOpts: Record<string
 
   switch (tool.id) {
     case 'merge': {
-      reportProgress(run, { phase: 'working', label: 'Merging PDFs in a local worker…' });
+      reportProgress(run, { phase: 'working', label: 'Merging PDFs…' });
       const out = await withPdfWorker(run, async (w, onProgress) => w.merge(await Promise.all(inputs.map(toBytes)), onProgress));
-      return { files: [{ name: 'merged.pdf', blob: pdfBlob(out) }] };
+      // Name after the first document so the result is tied to the user's files,
+      // with a count hint when several were combined (e.g. "report+2-merged.pdf").
+      const mergeName = inputs.length > 1 ? `${base}+${inputs.length - 1}-merged.pdf` : `${base}-merged.pdf`;
+      return { files: [{ name: mergeName, blob: pdfBlob(out) }] };
     }
     case 'split': {
       const bytes = await toBytes(first);
-      reportProgress(run, { phase: 'working', label: 'Splitting PDF in a local worker…' });
+      reportProgress(run, { phase: 'working', label: 'Splitting PDF…' });
       const parts = await withPdfWorker(run, async (w, onProgress) =>
         o.mode === 'ranges' ? w.splitRanges(bytes, String(o.ranges ?? ''), onProgress) : w.splitEach(bytes, onProgress),
       );
@@ -118,25 +122,25 @@ export async function runTool(tool: Tool, inputs: File[], rawOpts: Record<string
       return zipFiles(files, `${base}-split.zip`, run);
     }
     case 'extract-pages':
-      reportProgress(run, { phase: 'working', label: 'Extracting pages in a local worker…' });
+      reportProgress(run, { phase: 'working', label: 'Extracting pages…' });
       {
         const out = await withPdfWorker(run, async (w, onProgress) => w.extractPages(await toBytes(first), String(o.pages ?? ''), onProgress));
         return { files: [{ name: `${base}-extracted.pdf`, blob: pdfBlob(out) }] };
       }
     case 'remove-pages':
-      reportProgress(run, { phase: 'working', label: 'Removing pages in a local worker…' });
+      reportProgress(run, { phase: 'working', label: 'Removing pages…' });
       {
         const out = await withPdfWorker(run, async (w, onProgress) => w.removePages(await toBytes(first), String(o.pages ?? ''), onProgress));
         return { files: [{ name: `${base}-trimmed.pdf`, blob: pdfBlob(out) }] };
       }
     case 'reorder':
-      reportProgress(run, { phase: 'working', label: 'Reordering pages in a local worker…' });
+      reportProgress(run, { phase: 'working', label: 'Reordering pages…' });
       {
         const out = await withPdfWorker(run, async (w, onProgress) => w.reorder(await toBytes(first), String(o.order ?? ''), onProgress));
         return { files: [{ name: `${base}-reordered.pdf`, blob: pdfBlob(out) }] };
       }
     case 'rotate':
-      reportProgress(run, { phase: 'working', label: 'Rotating PDF in a local worker…' });
+      reportProgress(run, { phase: 'working', label: 'Rotating PDF…' });
       {
         const bytes = await toBytes(first);
         const pages = String(o.pages ?? '').trim();
@@ -151,13 +155,13 @@ export async function runTool(tool: Tool, inputs: File[], rawOpts: Record<string
         return { files: [{ name: `${base}-rotated.pdf`, blob: pdfBlob(out) }] };
       }
     case 'n-up':
-      reportProgress(run, { phase: 'working', label: 'Laying out pages in a local worker…' });
+      reportProgress(run, { phase: 'working', label: 'Laying out pages…' });
       {
         const out = await withPdfWorker(run, async (w, onProgress) => w.nUp(await toBytes(first), Number(o.perSheet), onProgress));
         return { files: [{ name: `${base}-${o.perSheet}up.pdf`, blob: pdfBlob(out) }] };
       }
     case 'booklet':
-      reportProgress(run, { phase: 'working', label: 'Imposing booklet spreads in a local worker…' });
+      reportProgress(run, { phase: 'working', label: 'Imposing booklet spreads…' });
       {
         const pageSize = o.pageSize === 'letter' ? 'letter' : 'a4';
         const binding = o.binding === 'right' ? 'right' : 'left';
@@ -174,9 +178,11 @@ export async function runTool(tool: Tool, inputs: File[], rawOpts: Record<string
       const images = await Promise.all(
         inputs.map(async (f) => ({ bytes: await toBytes(f), type: (f.type.includes('png') ? 'png' : 'jpg') as 'png' | 'jpg' })),
       );
-      reportProgress(run, { phase: 'working', label: 'Building PDF from images in a local worker…' });
+      reportProgress(run, { phase: 'working', label: 'Building PDF from images…' });
       const out = await withPdfWorker(run, async (w, onProgress) => w.imagesToPdf(images, { pageSize: o.pageSize, margin: o.margin }, onProgress));
-      return { files: [{ name: 'images.pdf', blob: pdfBlob(out) }] };
+      // Name after the first image (e.g. "scan1.pdf"), with a count hint for several.
+      const imgName = inputs.length > 1 ? `${base}+${inputs.length - 1}.pdf` : `${base}.pdf`;
+      return { files: [{ name: imgName, blob: pdfBlob(out) }] };
     }
     case 'pdf-to-jpg': {
       const pages = await renderToImages(await toBytes(first), { scale: o.scale, type: 'image/jpeg', quality: o.quality }, run);
@@ -267,13 +273,13 @@ export async function runTool(tool: Tool, inputs: File[], rawOpts: Record<string
 
     case 'page-numbers':
       {
-        reportProgress(run, { phase: 'working', label: 'Adding page numbers in a local worker…' });
+        reportProgress(run, { phase: 'working', label: 'Adding page numbers…' });
         const out = await withPdfWorker(run, async (w, onProgress) => w.pageNumbers(await toBytes(first), { format: o.format, position: o.position, fontSize: o.fontSize, margin: o.margin }, onProgress));
         return { files: [{ name: `${base}-numbered.pdf`, blob: pdfBlob(out) }] };
       }
     case 'bates':
       {
-        reportProgress(run, { phase: 'working', label: 'Adding Bates numbers in a local worker…' });
+        reportProgress(run, { phase: 'working', label: 'Adding Bates numbers…' });
         const prefix = String(o.prefix ?? '');
         const out = await withPdfWorker(run, async (w, onProgress) => w.pageNumbers(await toBytes(first), {
           format: `${prefix}{n}`,
@@ -287,13 +293,13 @@ export async function runTool(tool: Tool, inputs: File[], rawOpts: Record<string
       }
     case 'watermark':
       {
-        reportProgress(run, { phase: 'working', label: 'Adding watermark in a local worker…' });
+        reportProgress(run, { phase: 'working', label: 'Adding watermark…' });
         const out = await withPdfWorker(run, async (w, onProgress) => w.watermark(await toBytes(first), { text: o.text, fontSize: o.fontSize, opacity: o.opacity, angle: o.angle }, onProgress));
         return { files: [{ name: `${base}-watermarked.pdf`, blob: pdfBlob(out) }] };
       }
     case 'crop':
       {
-        reportProgress(run, { phase: 'working', label: 'Cropping PDF in a local worker…' });
+        reportProgress(run, { phase: 'working', label: 'Cropping PDF…' });
         const out = await withPdfWorker(run, async (w, onProgress) => w.crop(await toBytes(first), { top: o.top, right: o.right, bottom: o.bottom, left: o.left }, onProgress));
         return { files: [{ name: `${base}-cropped.pdf`, blob: pdfBlob(out) }] };
       }
@@ -336,13 +342,13 @@ export async function runTool(tool: Tool, inputs: File[], rawOpts: Record<string
       }
     case 'sanitize':
       {
-        reportProgress(run, { phase: 'working', label: 'Sanitizing PDF in a local worker…' });
+        reportProgress(run, { phase: 'working', label: 'Sanitizing PDF…' });
         const out = await withPdfWorker(run, async (w, onProgress) => w.sanitize(await toBytes(first), { removeAnnotations: o.removeAnnotations, removeForms: o.removeForms }, onProgress));
         return { files: [{ name: `${base}-sanitized.pdf`, blob: pdfBlob(out) }] };
       }
     case 'protect':
       {
-        reportProgress(run, { phase: 'working', label: 'Protecting PDF in a local worker…' });
+        reportProgress(run, { phase: 'working', label: 'Protecting PDF…' });
         const out = await withPdfWorker(run, async (w, onProgress) => w.protect(await toBytes(first), {
           userPassword: o.userPassword,
           ownerPassword: o.ownerPassword,
@@ -354,7 +360,7 @@ export async function runTool(tool: Tool, inputs: File[], rawOpts: Record<string
       }
     case 'unlock':
       {
-        reportProgress(run, { phase: 'working', label: 'Unlocking PDF in a local worker…' });
+        reportProgress(run, { phase: 'working', label: 'Unlocking PDF…' });
         const out = await withPdfWorker(run, async (w, onProgress) => w.unlock(await toBytes(first), String(o.password ?? ''), onProgress));
         return { files: [{ name: `${base}-unlocked.pdf`, blob: pdfBlob(out) }] };
       }

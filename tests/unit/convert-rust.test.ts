@@ -305,7 +305,7 @@ describe('imagesToPdf (rust core)', () => {
     const onProgress = vi.fn();
     await imagesToPdf([{ bytes: PNG_1x1, type: 'png' }], {}, onProgress);
     expect(onProgress).toHaveBeenCalledWith(
-      expect.objectContaining({ label: 'Building a 1-page PDF in Rust core…', current: 0, total: 1 }),
+      expect.objectContaining({ label: 'Building a 1-page PDF…', current: 0, total: 1 }),
     );
     expect(onProgress).toHaveBeenCalledWith(expect.objectContaining({ current: 1, total: 1 }));
   });

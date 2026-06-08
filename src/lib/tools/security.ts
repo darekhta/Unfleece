@@ -35,7 +35,7 @@ export async function sanitizePdf(bytes: Uint8Array, options: SanitizeOptions = 
   if (await hasEncryptDictionary(bytes)) {
     throw new Error('This PDF is password-protected. Unlock it first, then sanitize the unlocked copy.');
   }
-  notifyProgress(onProgress, { phase: 'working', label: 'Sanitizing PDF in Rust core…', current: 0, total: 1 });
+  notifyProgress(onProgress, { phase: 'working', label: 'Sanitizing PDF…', current: 0, total: 1 });
   const out = await wasmSanitize(bytes, {
     removeAnnotations: options.removeAnnotations !== false,
     removeForms: options.removeForms !== false,
@@ -50,7 +50,7 @@ export async function protectPdf(bytes: Uint8Array, options: ProtectOptions, onP
   if (!userPassword) throw new Error('Enter a password to protect this PDF');
   const ownerPassword = String(options.ownerPassword ?? '').trim() || userPassword;
 
-  notifyProgress(onProgress, { phase: 'working', label: 'Encrypting PDF in Rust core…', current: 0, total: 1 });
+  notifyProgress(onProgress, { phase: 'working', label: 'Encrypting PDF…', current: 0, total: 1 });
   const out = await wasmProtect(bytes, {
     userPassword,
     ownerPassword,
@@ -67,7 +67,7 @@ export async function unlockPdf(bytes: Uint8Array, password: string, onProgress?
   const cleanPassword = String(password ?? '').trim();
   if (!cleanPassword) throw new Error('Enter the password for this PDF');
 
-  notifyProgress(onProgress, { phase: 'working', label: 'Decrypting PDF in Rust core…', current: 0, total: 1 });
+  notifyProgress(onProgress, { phase: 'working', label: 'Decrypting PDF…', current: 0, total: 1 });
   const out = await wasmUnlock(bytes, cleanPassword);
   notifyProgress(onProgress, { phase: 'saving', label: 'Saving unlocked PDF…', current: 1, total: 1 });
   return out;

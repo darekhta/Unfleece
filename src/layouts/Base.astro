@@ -1,7 +1,16 @@
 ---
 import '../styles/global.css';
 import Icon from '../components/Icon.astro';
-import { CATEGORY_TEXT, LAYOUT_TEXT, type Locale } from '../lib/locales';
+import {
+  ALL_LOCALES,
+  CATEGORY_TEXT,
+  LAYOUT_TEXT,
+  LOCALES,
+  bundle,
+  localizedPath,
+  switchLocalePath,
+  type Locale,
+} from '../lib/locales';
 
 interface Props {
   title?: string;
@@ -23,10 +32,25 @@ const canonical = new URL(canonicalPath ?? Astro.url.pathname, Astro.site).toStr
 const repo = 'https://github.com/darekhta/Unfleece';
 const t = LAYOUT_TEXT[lang];
 const categories = CATEGORY_TEXT[lang];
+const dir = bundle(lang).meta.dir;
+const currentPath = Astro.url.pathname;
+const homeHref = localizedPath(lang, '/');
+const toolsHref = `${homeHref === '/' ? '' : homeHref}#tools-section`;
+// The About page is English-only for now (its body copy isn't translated), so
+// link to it directly rather than a non-existent localized URL.
+const aboutHref = '/about';
+const langOptions = ALL_LOCALES.map((code) => ({
+  code,
+  autonym: LOCALES[code].autonym,
+  htmlLang: LOCALES[code].htmlLang,
+  optionDir: LOCALES[code].dir,
+  href: switchLocalePath(currentPath, code),
+  current: code === lang,
+}));
 ---
 
 <!doctype html>
-<html lang={lang} data-theme="light">
+<html lang={lang} dir={dir} data-theme="light">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -58,24 +82,98 @@ const categories = CATEGORY_TEXT[lang];
         } catch (e) {}
       })();
     </script>
+
+    <!-- Language auto-detect (first visit only): system language → country → English.
+         Never overrides an explicit choice; once detected we remember it forever. -->
+    <script is:inline>
+      (function () {
+        var SUP = ['en', 'zh', 'hi', 'es', 'fr', 'ar', 'pt', 'ru', 'de', 'ja', 'it', 'uk'];
+        var KEY = 'uf-lang';
+        try {
+          if (localStorage.getItem(KEY)) return; // already chosen/detected — leave the user in control
+          var path = location.pathname;
+          var seg = path.split('/')[1];
+          var hasPrefix = SUP.indexOf(seg) >= 0 && seg !== 'en';
+          // A directly-visited localized URL (e.g. /uk/…) is an explicit choice:
+          // honor it, remember it, and never auto-redirect away from it.
+          if (hasPrefix) { localStorage.setItem(KEY, seg); return; }
+          var current = 'en';
+          var toPath = function (loc) {
+            var rest = path; // we are on an unprefixed (English) path here
+            if (!rest) rest = '/';
+            var p = (loc === 'en' ? '' : '/' + loc) + (rest === '/' ? '' : rest);
+            return (p || '/') + location.search + location.hash;
+          };
+          // 1) system languages (ordered by preference)
+          var prefs = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || 'en'];
+          var pick = null;
+          for (var i = 0; i < prefs.length; i++) {
+            var b = (prefs[i] || '').toLowerCase().split('-')[0];
+            if (SUP.indexOf(b) >= 0) { pick = b; break; }
+          }
+          if (pick) {
+            localStorage.setItem(KEY, pick);
+            if (pick !== current) location.replace(toPath(pick));
+            return;
+          }
+          // 2) country fallback (Cloudflare's free geo trace) — only when no system match
+          fetch('/cdn-cgi/trace').then(function (r) { return r.text(); }).then(function (txt) {
+            var m = /(?:^|\n)loc=([A-Z]{2})/.exec(txt);
+            var COUNTRY = { CN:'zh',TW:'zh',HK:'zh',IN:'hi',ES:'es',MX:'es',AR:'es',CO:'es',CL:'es',PE:'es',FR:'fr',BE:'fr',
+              EG:'ar',SA:'ar',AE:'ar',MA:'ar',DZ:'ar',IQ:'ar',JO:'ar',BR:'pt',PT:'pt',RU:'ru',BY:'ru',KZ:'ru',
+              DE:'de',AT:'de',CH:'de',JP:'ja',IT:'it',UA:'uk' };
+            var loc = m && COUNTRY[m[1]] ? COUNTRY[m[1]] : 'en';
+            localStorage.setItem(KEY, loc);
+            if (loc !== current) location.replace(toPath(loc));
+          }).catch(function () { try { localStorage.setItem(KEY, 'en'); } catch (e) {} });
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <a class="skip-link" href="#main">{t.skip}</a>
 
     <header class="site-header">
       <div class="container header-inner">
-        <a class="brand" href="/" aria-label={t.homeAria}>
+        <a class="brand" href={homeHref} aria-label={t.homeAria}>
           <img src="/logo.png" alt="" class="mark" width="30" height="30" />
           <span>unfleece</span>
         </a>
 
         <nav class="main-nav" aria-label={t.navAria}>
-          <a href="/#tools-section">{t.allTools}</a>
-          <a href="/about">{t.howItWorks}</a>
-          <a href="/about#privacy">{t.privacy}</a>
+          <a href={toolsHref}>{t.allTools}</a>
+          <a href={aboutHref}>{t.howItWorks}</a>
+          <a href={`${aboutHref}#privacy`}>{t.privacy}</a>
         </nav>
 
         <div class="header-actions">
+          <details class="lang-menu" id="lang-menu">
+            <summary class="btn-icon lang-trigger" aria-label={t.language} title={t.language}>
+              <Icon name="globe" />
+              <span class="lang-current">{LOCALES[lang].autonym}</span>
+              <span class="lang-caret" aria-hidden="true"><Icon name="chevronRight" /></span>
+            </summary>
+            <ul class="lang-list" role="menu" aria-label={t.language}>
+              {langOptions.map((o) => (
+                <li role="none">
+                  <a
+                    role="menuitem"
+                    href={o.href}
+                    hreflang={o.htmlLang}
+                    lang={o.htmlLang}
+                    dir={o.optionDir}
+                    data-locale={o.code}
+                    class={o.current ? 'lang-item current' : 'lang-item'}
+                    aria-current={o.current ? 'true' : undefined}
+                  >
+                    <span class="lang-name">{o.autonym}</span>
+                    {o.current && <span class="lang-tick"><Icon name="check" /></span>}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </details>
+
           <button class="btn-icon theme-toggle" id="theme-toggle" type="button" aria-label="Switch theme">
             <span class="moon"><Icon name="moon" /></span>
             <span class="sun"><Icon name="sun" /></span>
@@ -92,23 +190,23 @@ const categories = CATEGORY_TEXT[lang];
       <div class="container">
         <div class="footer-grid">
           <div class="footer-brand">
-            <a class="brand" href="/"><img src="/logo.png" alt="" class="mark" width="28" height="28" /><span>unfleece</span></a>
+            <a class="brand" href={homeHref}><img src="/logo.png" alt="" class="mark" width="28" height="28" /><span>unfleece</span></a>
             <p>{t.footerBlurb}</p>
           </div>
           <div>
             <h4>{t.tools}</h4>
             <ul>
-              <li><a href="/#tools-section">{categories.organize.label}</a></li>
-              <li><a href="/#tools-section">{categories.convert.label}</a></li>
-              <li><a href="/#tools-section">{categories.edit.label}</a></li>
-              <li><a href="/#tools-section">{categories.optimize.label}</a></li>
-              <li><a href="/#tools-section">{categories.forms.label}</a></li>
+              <li><a href={toolsHref}>{categories.organize.label}</a></li>
+              <li><a href={toolsHref}>{categories.convert.label}</a></li>
+              <li><a href={toolsHref}>{categories.edit.label}</a></li>
+              <li><a href={toolsHref}>{categories.optimize.label}</a></li>
+              <li><a href={toolsHref}>{categories.forms.label}</a></li>
             </ul>
           </div>
           <div>
             <h4>{t.project}</h4>
             <ul>
-              <li><a href="/about">{t.howItWorks}</a></li>
+              <li><a href={aboutHref}>{t.howItWorks}</a></li>
               <li><a href={repo} target="_blank" rel="noopener">{t.github}</a></li>
               <li><a href={`${repo}/blob/main/LICENSE`} target="_blank" rel="noopener">{t.license}</a></li>
               <li><a href={`${repo}/issues`} target="_blank" rel="noopener">{t.reportIssue}</a></li>
@@ -145,6 +243,25 @@ const categories = CATEGORY_TEXT[lang];
           else root.removeAttribute('data-theme');
           try { localStorage.setItem(KEY, next); } catch (e) {}
           label();
+        });
+      })();
+    </script>
+    <script is:inline>
+      (function () {
+        var menu = document.getElementById('lang-menu');
+        if (!menu) return;
+        // Remember an explicit choice so auto-detect never overrides it again.
+        menu.querySelectorAll('a[data-locale]').forEach(function (a) {
+          a.addEventListener('click', function () {
+            try { localStorage.setItem('uf-lang', a.getAttribute('data-locale')); } catch (e) {}
+          });
+        });
+        // Close the dropdown on outside click or Escape.
+        document.addEventListener('click', function (e) {
+          if (menu.open && !menu.contains(e.target)) menu.removeAttribute('open');
+        });
+        document.addEventListener('keydown', function (e) {
+          if (e.key === 'Escape' && menu.open) { menu.removeAttribute('open'); menu.querySelector('summary').focus(); }
         });
       })();
     </script>
