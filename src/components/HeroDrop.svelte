@@ -17,6 +17,7 @@
   let files = $state<File[]>([]);
   let dragOver = $state(false);
   let busy = $state(false);
+  let error = $state('');
   let inputEl: HTMLInputElement | undefined;
 
   const isImage = $derived(files.length > 0 && files.every((f) => f.type.startsWith('image/')));
@@ -25,6 +26,7 @@
   function add(list: FileList | null) {
     if (!list || !list.length) return;
     files = Array.from(list);
+    error = '';
   }
   function onDrop(e: DragEvent) {
     e.preventDefault();
@@ -33,10 +35,13 @@
   }
   async function go(href: string) {
     busy = true;
+    error = '';
     try {
       if (files.length) await stashFiles(files);
     } catch (e) {
-      /* fall through — tool page will just show an empty dropzone */
+      busy = false;
+      error = 'Could not pass this file to the tool page. Open the tool and add it there.';
+      return;
     }
     window.location.assign(href);
   }
@@ -81,4 +86,11 @@
       {/each}
     </div>
   </div>
+
+  {#if error}
+    <div class="field-error" role="alert">
+      <Icon name="alert" />
+      {error}
+    </div>
+  {/if}
 </div>

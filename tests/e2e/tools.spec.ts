@@ -403,6 +403,12 @@ test('images to PDF', async ({ page }) => {
   expect(await runAndDownload(page)).toBe('img.pdf');
 });
 
+test('images to PDF normalizes TIFF inputs before PDF assembly', async ({ page }) => {
+  await page.goto('/tools/images-to-pdf');
+  await setFiles(page, [tiffFile('scan.tif', tiff1x1Buffer())]);
+  expect(await runAndDownload(page, 60000)).toBe('scan.pdf');
+});
+
 test('PDF to JPG (pdf.js render) yields a zip', async ({ page }) => {
   await page.goto('/tools/pdf-to-jpg');
   await setFiles(page, [pdfFile('doc.pdf', await samplePdfBuffer(2))]);

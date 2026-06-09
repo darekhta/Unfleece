@@ -42,6 +42,29 @@ function validateInputs(tool: Tool, inputs: File[]) {
   if (rejected) throw new Error(`${rejected.name} is not supported by ${tool.name}`);
 }
 
+function directPdfImageType(file: File): 'png' | 'jpg' | null {
+  const type = file.type.toLowerCase();
+  const name = file.name.toLowerCase();
+  if (type === 'image/png' || name.endsWith('.png')) return 'png';
+  if (type === 'image/jpeg' || name.endsWith('.jpg') || name.endsWith('.jpeg')) return 'jpg';
+  return null;
+}
+
+async function imageForPdf(file: File, index: number, total: number, run: RunOptions): Promise<{ bytes: Uint8Array; type: 'png' | 'jpg' }> {
+  const type = directPdfImageType(file);
+  if (type) return { bytes: await toBytes(file), type };
+
+  reportProgress(run, {
+    phase: 'working',
+    label: `Normalizing image ${index + 1} of ${total}…`,
+    current: index,
+    total,
+  });
+  const png = await convertImage(file, 'image/png');
+  throwIfAborted(run.signal);
+  return { bytes: new Uint8Array(await png.arrayBuffer()), type: 'png' };
+}
+
 /** Coerce raw form values into typed option values using the tool's schema. */
 export function coerceOptions(tool: Tool, raw: Record<string, unknown>): Record<string, any> {
   const out: Record<string, any> = {};
@@ -187,7 +210,7 @@ async function runToolInner(tool: Tool, inputs: File[], rawOpts: Record<string, 
 
     case 'images-to-pdf': {
       const images = await Promise.all(
-        inputs.map(async (f) => ({ bytes: await toBytes(f), type: (f.type.includes('png') ? 'png' : 'jpg') as 'png' | 'jpg' })),
+        inputs.map((f, index) => imageForPdf(f, index, inputs.length, run)),
       );
       reportProgress(run, { phase: 'working', label: 'Building PDF from images…' });
       const out = await withPdfWorker(run, async (w, onProgress) => w.imagesToPdf(images, { pageSize: o.pageSize, margin: o.margin }, onProgress));
