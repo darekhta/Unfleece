@@ -130,6 +130,13 @@ export const fr: LocaleBundle = {
     rejectedMany: '{n} fichiers ne correspondent pas à cet outil.',
     rejectedSingle: 'Cet outil traite un fichier à la fois ; seul le premier fichier compatible a été ajouté.',
   },
+  promo: {
+    disclosure: 'Annonce',
+    heading: 'Vous apprenez l’allemand ?',
+    body: 'NeoDeutsch enseigne l’allemand avec chaque explication dans votre langue — grammaire, vocabulaire et prononciation.',
+    cta: 'Essayer gratuitement',
+    imgAlt: 'Reineke, le renard de NeoDeutsch, avec une écharpe aux couleurs allemandes',
+  },
   tools: {
     merge: {
       name: 'Fusionner PDF',

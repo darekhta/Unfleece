@@ -1,0 +1,170 @@
+---
+// Cross-promo ad block for NeoDeutsch (the author's German-learning app).
+// Rendered only on the homepage, and only for locales whose i18n bundle defines
+// `promo` (en, fr, ru, uk, pl) — HomePage gates on that, so this component can
+// assume `promo` is present. Honest, dismissable-feeling, and clearly labelled.
+import Icon from './Icon.astro';
+import type { PromoText } from '../lib/locales';
+
+// `contained` (default) wraps the card in a `.container`; pass `contained={false}`
+// to drop it straight into a parent that already provides its own width column.
+const { promo, contained = true } = Astro.props as { promo: PromoText; contained?: boolean };
+
+const BRAND = 'NeoDeutsch';
+const HREF = 'https://neodeutsch.app/?utm_source=unfleece&utm_medium=referral&utm_campaign=learn-german';
+const FOX = '/neodeutsch-reineke.webp';
+---
+
+<aside class="promo-band section" aria-label={promo.disclosure}>
+  <div class:list={['promo-shell', { container: contained }]}>
+    <a
+      class="promo-card"
+      href={HREF}
+      target="_blank"
+      rel="noopener sponsored"
+      aria-label={`${BRAND} — ${promo.heading} · ${promo.disclosure}`}
+    >
+      <span class="promo-flag" aria-hidden="true"></span>
+      <img
+        class="promo-fox"
+        src={FOX}
+        alt={promo.imgAlt}
+        width="150"
+        height="150"
+        loading="lazy"
+        decoding="async"
+      />
+      <div class="promo-copy">
+        <span class="promo-kicker" aria-hidden="true">
+          <span class="promo-brand">{BRAND}</span>
+          <span class="promo-tag">{promo.disclosure}</span>
+        </span>
+        <span class="promo-head">{promo.heading}</span>
+        <span class="promo-text">{promo.body}</span>
+      </div>
+      <span class="promo-cta">{promo.cta}<Icon name="arrowRight" sw={2} /></span>
+    </a>
+  </div>
+</aside>
+
+<style>
+  .promo-band { margin-top: 4rem; }
+
+  .promo-card {
+    position: relative;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 0.5rem 1.5rem;
+    padding: 1.15rem 1.5rem;
+    border-radius: var(--radius-xl);
+    border: 1px solid rgba(216, 96, 47, 0.30);
+    background:
+      radial-gradient(120% 160% at 0% 0%, rgba(216, 96, 47, 0.16), transparent 58%),
+      var(--surface-glass-strong);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    box-shadow: var(--shadow-md), var(--inset-hi);
+    color: var(--ink);
+    overflow: hidden;
+    transition: transform var(--dur-base) var(--ease-out),
+      box-shadow var(--dur-base) var(--ease-out),
+      border-color var(--dur-base) var(--ease-out);
+  }
+
+  .promo-card:hover,
+  .promo-card:focus-visible {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg), var(--inset-hi);
+    border-color: rgba(216, 96, 47, 0.55);
+  }
+
+  /* German-flag ribbon hugging the top edge — ties the card to "German". */
+  .promo-flag {
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 3px;
+    background: linear-gradient(90deg, #1a1a1a 0 33.33%, #d00 33.33% 66.66%, #ffce00 66.66%);
+  }
+
+  .promo-fox {
+    width: clamp(76px, 11vw, 116px);
+    height: auto;
+    filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.18));
+  }
+
+  .promo-copy { display: flex; flex-direction: column; min-width: 0; }
+
+  .promo-kicker { display: flex; align-items: center; gap: 0.55rem; margin-bottom: 0.25rem; }
+  .promo-brand { font-weight: 700; font-size: 0.9rem; letter-spacing: -0.01em; color: #c2541f; }
+  .promo-tag {
+    font-size: 0.625rem;
+    font-weight: 600;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--muted);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-full);
+    padding: 0.05rem 0.45rem;
+    line-height: 1.5;
+  }
+
+  .promo-head {
+    font-weight: 650;
+    font-size: 1.3rem;
+    line-height: 1.2;
+    letter-spacing: -0.015em;
+    color: var(--ink);
+  }
+  .promo-text {
+    margin-top: 0.2rem;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    color: var(--ink-soft);
+    max-width: 54ch;
+  }
+
+  .promo-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    white-space: nowrap;
+    padding: 0.7rem 1.2rem;
+    border-radius: var(--radius-full);
+    background: linear-gradient(135deg, #e0712f, #c14a1c);
+    color: #fff;
+    font-weight: 600;
+    font-size: 0.95rem;
+    box-shadow: 0 8px 20px -8px rgba(216, 96, 47, 0.65);
+    transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-base) var(--ease-out);
+  }
+  .promo-cta :global(svg) {
+    width: 1.05em;
+    height: 1.05em;
+    transition: transform var(--dur-base) var(--ease-out);
+  }
+  .promo-card:hover .promo-cta { transform: translateY(-1px); box-shadow: 0 12px 26px -8px rgba(216, 96, 47, 0.70); }
+  .promo-card:hover .promo-cta :global(svg) { transform: translateX(3px); }
+
+  /* Dark theme (default): brand wordmark needs a brighter orange on dark glass. */
+  :root:not([data-theme='light']) .promo-brand { color: #f0a062; }
+
+  @media (max-width: 640px) {
+    .promo-card {
+      grid-template-columns: 1fr;
+      justify-items: center;
+      text-align: center;
+      gap: 0.5rem;
+      padding: 1.4rem 1.2rem;
+    }
+    .promo-fox { width: clamp(88px, 28vw, 120px); }
+    .promo-kicker { justify-content: center; }
+    .promo-text { max-width: 42ch; }
+    .promo-cta { margin-top: 0.6rem; width: 100%; max-width: 280px; justify-content: center; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .promo-card, .promo-cta, .promo-cta :global(svg) { transition: none; }
+    .promo-card:hover { transform: none; }
+  }
+</style>

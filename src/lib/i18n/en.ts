@@ -131,6 +131,13 @@ export const en: LocaleBundle = {
     rejectedMany: '{n} files do not match this tool.',
     rejectedSingle: 'This tool uses one file at a time, so only the first matching file was added.',
   },
+  promo: {
+    disclosure: 'Ad',
+    heading: 'Learning German?',
+    body: 'NeoDeutsch teaches German with every explanation in your own language — grammar, vocabulary and pronunciation.',
+    cta: 'Try it free',
+    imgAlt: 'Reineke, the NeoDeutsch fox, in a German-flag scarf',
+  },
   tools: {},
 };
 

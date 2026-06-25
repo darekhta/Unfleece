@@ -1,14 +1,18 @@
 // @ts-nocheck
 /// <reference lib="webworker" />
 /* Unfleece offline shell. Handles same-origin GETs only; user files are never requested. */
-const CACHE_NAME = 'unfleece-static-v13';
+const CACHE_NAME = 'unfleece-static-v15';
 const PRECACHE = [
   '/',
   '/about',
   '/sitemap.xml',
   '/manifest.webmanifest',
   '/logo.png',
-  '/og-logo.png',
+  '/icon-192.png',
+  '/icon-512.png',
+  '/icon-maskable-512.png',
+  '/og-image.png',
+  '/neodeutsch-reineke.webp',
   '/favicon.svg',
   '/robots.txt',
 ];

@@ -2,15 +2,44 @@
 import Icon from './Icon.astro';
 import ToolCard from './ToolCard.astro';
 import HeroDrop from './HeroDrop.svelte';
+import PromoNeoDeutsch from './PromoNeoDeutsch.astro';
 import { toolsByCategory } from '../lib/registry';
-import { CATEGORY_TEXT, HOME_TEXT, type Locale } from '../lib/locales';
+import { CATEGORY_TEXT, HOME_TEXT, LOCALES, bundle, type Locale } from '../lib/locales';
 
 const { locale = 'en' } = Astro.props as { locale?: Locale };
 const groups = toolsByCategory();
 const h = HOME_TEXT[locale];
 const cats = CATEGORY_TEXT[locale];
+// Cross-promo ad — only locales whose bundle defines `promo` render it (en, fr, ru, uk, pl).
+const promo = bundle(locale).promo;
 // About is English-only for now; link directly (no localized URL exists).
 const aboutHref = '/about';
+
+// WebSite + Organization structured data — home pages only.
+const siteUrl = new URL('/', Astro.site).toString();
+const homeJsonLd = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'WebSite',
+      '@id': `${siteUrl}#website`,
+      name: 'Unfleece',
+      alternateName: 'Unfleece — free, private PDF tools',
+      url: siteUrl,
+      inLanguage: LOCALES[locale].htmlLang,
+      publisher: { '@id': `${siteUrl}#org` },
+    },
+    {
+      '@type': 'Organization',
+      '@id': `${siteUrl}#org`,
+      name: 'Unfleece',
+      url: siteUrl,
+      logo: new URL('/icon-512.png', Astro.site).toString(),
+      description: 'Free, private, open-source PDF and image tools that run entirely in your browser.',
+      sameAs: ['https://github.com/darekhta/Unfleece'],
+    },
+  ],
+};
 ---
 
 <!-- Hero -->
@@ -88,6 +117,8 @@ const aboutHref = '/about';
   </div>
 </section>
 
+{promo && <PromoNeoDeutsch promo={promo} />}
+
 <!-- Reassurance band -->
 <section class="section" id="how-section" style="margin-top:5rem; scroll-margin-top:84px">
   <div class="container">
@@ -105,3 +136,5 @@ const aboutHref = '/about';
     </div>
   </div>
 </section>
+
+<script is:inline type="application/ld+json" set:html={JSON.stringify(homeJsonLd)} />

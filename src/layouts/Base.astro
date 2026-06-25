@@ -21,7 +21,7 @@ interface Props {
 }
 const {
   title = 'Unfleece — free, private PDF tools',
-  description = 'Free, private PDF tools that run 100% in your browser. Merge, split, compress, convert and more — your files never leave your device. No file upload, no account, no fleeceware.',
+  description = 'Free, private PDF tools that run 100% in your browser. Merge, split, compress, convert and sign — no file upload, no account, no fleeceware.',
   lang = 'en',
   canonicalPath,
   alternates = [],
@@ -30,6 +30,16 @@ const {
 const fullTitle = title === 'Unfleece — free, private PDF tools' ? title : `${title} · Unfleece`;
 const canonical = new URL(canonicalPath ?? Astro.url.pathname, Astro.site).toString();
 const repo = 'https://github.com/darekhta/Unfleece';
+
+// Open Graph locale codes (locale_TERRITORY) for each supported language.
+const OG_LOCALE: Record<Locale, string> = {
+  en: 'en_US', zh: 'zh_CN', hi: 'hi_IN', es: 'es_ES', fr: 'fr_FR', ar: 'ar_AR',
+  pt: 'pt_BR', ru: 'ru_RU', de: 'de_DE', ja: 'ja_JP', it: 'it_IT', pl: 'pl_PL', uk: 'uk_UA',
+};
+const ogLocale = OG_LOCALE[lang] ?? 'en_US';
+const ogLocaleAlternates = ALL_LOCALES.map((l) => OG_LOCALE[l]).filter((code) => code !== ogLocale);
+const ogImage = new URL('/og-image.png', Astro.site).toString();
+const ogImageAlt = 'Unfleece — free, private PDF tools that run entirely in your browser.';
 const t = LAYOUT_TEXT[lang];
 const categories = CATEGORY_TEXT[lang];
 const dir = bundle(lang).meta.dir;
@@ -56,12 +66,14 @@ const langOptions = ALL_LOCALES.map((code) => ({
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{fullTitle}</title>
     <meta name="description" content={description} />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
     <link rel="canonical" href={canonical} />
     {alternates.map((alt) => <link rel="alternate" hreflang={alt.lang} href={new URL(alt.path, Astro.site).toString()} />)}
     <meta name="theme-color" content="#EEF1F7" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <link rel="icon" href="/logo.png" type="image/png" />
-    <link rel="apple-touch-icon" href="/logo.png" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/icon-192.png" type="image/png" sizes="192x192" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Unfleece" />
 
@@ -70,8 +82,18 @@ const langOptions = ALL_LOCALES.map((code) => ({
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonical} />
     <meta property="og:site_name" content="Unfleece" />
-    <meta property="og:image" content={new URL('/og-logo.png', Astro.site).toString()} />
+    <meta property="og:locale" content={ogLocale} />
+    {ogLocaleAlternates.map((code) => <meta property="og:locale:alternate" content={code} />)}
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content={ogImageAlt} />
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={fullTitle} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
+    <meta name="twitter:image:alt" content={ogImageAlt} />
 
     <!-- Default theme is light; honor a saved 'dark' before paint to avoid a flash. -->
     <script is:inline>
@@ -83,49 +105,64 @@ const langOptions = ALL_LOCALES.map((code) => ({
       })();
     </script>
 
-    <!-- Language auto-detect (first visit only): system language → country → English.
-         Never overrides an explicit choice; once detected we remember it forever. -->
+    <!-- Language suggestion (first visit only): system language → country.
+         We never auto-redirect (Google advises against guessing the user's language);
+         instead we surface a dismissible banner linking to the localized page. An
+         explicit choice — the switcher, a banner click, or directly visiting a /<locale>/
+         URL — is remembered forever and suppresses the suggestion. -->
     <script is:inline>
       (function () {
-        var SUP = ['en', 'zh', 'hi', 'es', 'fr', 'ar', 'pt', 'ru', 'de', 'ja', 'it', 'uk'];
+        var SUP = ['en', 'zh', 'hi', 'es', 'fr', 'ar', 'pt', 'ru', 'de', 'ja', 'it', 'pl', 'uk'];
         var KEY = 'uf-lang';
+        var PHRASE = {
+          es: 'Ver Unfleece en español', fr: 'Voir Unfleece en français', de: 'Unfleece auf Deutsch ansehen',
+          it: 'Vedi Unfleece in italiano', pt: 'Ver o Unfleece em português', ru: 'Открыть Unfleece на русском',
+          pl: 'Zobacz Unfleece po polsku', uk: 'Відкрити Unfleece українською', zh: '用中文查看 Unfleece', ja: 'Unfleece を日本語で見る',
+          hi: 'Unfleece को हिंदी में देखें', ar: 'عرض Unfleece بالعربية',
+        };
         try {
-          if (localStorage.getItem(KEY)) return; // already chosen/detected — leave the user in control
+          if (localStorage.getItem(KEY)) return; // already chosen/dismissed — leave the user in control
           var path = location.pathname;
           var seg = path.split('/')[1];
-          var hasPrefix = SUP.indexOf(seg) >= 0 && seg !== 'en';
-          // A directly-visited localized URL (e.g. /uk/…) is an explicit choice:
-          // honor it, remember it, and never auto-redirect away from it.
-          if (hasPrefix) { localStorage.setItem(KEY, seg); return; }
-          var current = 'en';
+          // A directly-visited localized URL (e.g. /uk/…) is an explicit choice: remember it, never nag.
+          if (SUP.indexOf(seg) >= 0 && seg !== 'en') { localStorage.setItem(KEY, seg); return; }
           var toPath = function (loc) {
-            var rest = path; // we are on an unprefixed (English) path here
-            if (!rest) rest = '/';
-            var p = (loc === 'en' ? '' : '/' + loc) + (rest === '/' ? '' : rest);
-            return (p || '/') + location.search + location.hash;
+            return ((loc === 'en' ? '' : '/' + loc) + (path === '/' ? '' : path) || '/') + location.search + location.hash;
+          };
+          var suggest = function (pick) {
+            if (!pick || pick === 'en' || !PHRASE[pick]) return;
+            var dir = pick === 'ar' ? 'rtl' : 'ltr';
+            var bar = document.createElement('div');
+            bar.setAttribute('role', 'region');
+            bar.setAttribute('aria-label', 'Language suggestion');
+            bar.lang = pick; bar.dir = dir;
+            bar.style.cssText = 'position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:60;display:flex;align-items:center;gap:.85rem;max-width:calc(100vw - 32px);padding:.7rem .8rem .7rem 1.1rem;background:var(--surface-glass-strong);backdrop-filter:blur(12px);border:1px solid var(--border-strong);border-radius:var(--radius-full);box-shadow:var(--shadow-lg);font-size:.95rem;color:var(--ink)';
+            var a = document.createElement('a');
+            a.href = toPath(pick); a.textContent = PHRASE[pick]; a.hreflang = pick;
+            a.style.cssText = 'color:var(--ink);font-weight:600;text-decoration:none';
+            a.addEventListener('click', function () { try { localStorage.setItem(KEY, pick); } catch (e) {} });
+            var x = document.createElement('button');
+            x.type = 'button'; x.textContent = '✕'; x.setAttribute('aria-label', 'Dismiss');
+            x.style.cssText = 'flex:none;width:28px;height:28px;border:0;border-radius:var(--radius-full);background:var(--surface-sunken);color:var(--muted);font-size:.85rem;cursor:pointer;line-height:1';
+            x.addEventListener('click', function () { try { localStorage.setItem(KEY, 'en'); } catch (e) {} bar.remove(); });
+            bar.appendChild(a); bar.appendChild(x);
+            (document.body || document.documentElement).appendChild(bar);
           };
           // 1) system languages (ordered by preference)
           var prefs = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || 'en'];
-          var pick = null;
           for (var i = 0; i < prefs.length; i++) {
             var b = (prefs[i] || '').toLowerCase().split('-')[0];
-            if (SUP.indexOf(b) >= 0) { pick = b; break; }
-          }
-          if (pick) {
-            localStorage.setItem(KEY, pick);
-            if (pick !== current) location.replace(toPath(pick));
-            return;
+            if (b === 'en') return; // English already preferred — no suggestion
+            if (SUP.indexOf(b) >= 0) { suggest(b); return; }
           }
           // 2) country fallback (Cloudflare's free geo trace) — only when no system match
           fetch('/cdn-cgi/trace').then(function (r) { return r.text(); }).then(function (txt) {
             var m = /(?:^|\n)loc=([A-Z]{2})/.exec(txt);
             var COUNTRY = { CN:'zh',TW:'zh',HK:'zh',IN:'hi',ES:'es',MX:'es',AR:'es',CO:'es',CL:'es',PE:'es',FR:'fr',BE:'fr',
               EG:'ar',SA:'ar',AE:'ar',MA:'ar',DZ:'ar',IQ:'ar',JO:'ar',BR:'pt',PT:'pt',RU:'ru',BY:'ru',KZ:'ru',
-              DE:'de',AT:'de',CH:'de',JP:'ja',IT:'it',UA:'uk' };
-            var loc = m && COUNTRY[m[1]] ? COUNTRY[m[1]] : 'en';
-            localStorage.setItem(KEY, loc);
-            if (loc !== current) location.replace(toPath(loc));
-          }).catch(function () { try { localStorage.setItem(KEY, 'en'); } catch (e) {} });
+              DE:'de',AT:'de',CH:'de',JP:'ja',IT:'it',PL:'pl',UA:'uk' };
+            if (m && COUNTRY[m[1]]) suggest(COUNTRY[m[1]]);
+          }).catch(function () {});
         } catch (e) {}
       })();
     </script>

@@ -3,6 +3,7 @@
  * heavy imports) so it can be consumed at build time by Astro to generate one
  * static, indexable page per tool, and at runtime by the UI to render the tool.
  */
+import { TOOL_CONTENT } from './toolContent.js';
 
 export type Category = 'organize' | 'edit' | 'convert' | 'optimize' | 'forms' | 'security';
 
@@ -50,6 +51,10 @@ export interface Tool {
   icon: string;
   tagline: string;
   description: string;
+  /** Unique on-page intro paragraph (English source; SEO/AI body copy). */
+  intro?: string;
+  /** Tool-specific FAQ (English source). Falls back to the generic template when absent. */
+  faqs?: { q: string; a: string }[];
   /** HTML input `accept`. */
   accept: string;
   /** Accept multiple input files. */
@@ -493,6 +498,16 @@ export const TOOLS: Tool[] = [
     accept: PDF, multiple: false, output: 'pdf', engine: 'browser',
   },
 ];
+
+// Attach the English on-page SEO copy (unique intro + tool-specific FAQ) so each
+// Tool carries genuinely distinct body content. Locales override via i18n bundles.
+for (const tool of TOOLS) {
+  const content = TOOL_CONTENT[tool.id];
+  if (content) {
+    tool.intro = content.intro;
+    tool.faqs = content.faqs;
+  }
+}
 
 export const TOOLS_BY_SLUG: Record<string, Tool> = Object.fromEntries(TOOLS.map((t) => [t.slug, t]));
 export const TOOLS_BY_ID: Record<string, Tool> = Object.fromEntries(TOOLS.map((t) => [t.id, t]));

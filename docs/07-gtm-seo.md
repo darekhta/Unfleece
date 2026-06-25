@@ -16,10 +16,21 @@ durable engine that compounds slowly.
 - **One indexable static page per tool and locale** (`/tools/merge-pdf`,
   `/uk/tools/merge-pdf`, `/it/tools/merge-pdf`, …) — exactly how incumbents rank. Astro
   makes each a static route.
-- **Clear Google's 2025 thin-content bar:** every page needs 500+ genuinely unique words,
-  a working tool (unique utility), how-to content, and FAQ schema. No boilerplate clones.
-- First localization wave shipped: English, Ukrainian and Italian tool pages with
-  canonical/hreflang alternates and a language switcher.
+- **Clear Google's thin-content bar:** every page needs genuinely unique substance —
+  a working tool (unique utility) plus per-tool prose, not boilerplate clones. Each tool
+  page now carries a unique English "About" overview and tool-specific FAQ derived from the
+  tool's real behavior (`src/lib/toolContent.ts`), on top of the shared how-it-works copy.
+  Translating that per-tool copy into the other 11 locales is the open follow-up.
+- **All 12 locales shipped** (en + 11 under `/<locale>/`), each tool and home page with
+  self-canonical + full hreflang alternates and a language switcher. The XML sitemap
+  enumerates every locale of every tool and home (≈469 URLs) with reciprocal `xhtml:link`
+  alternates — no fabricated `lastmod`.
+- **Structured data:** per-tool `SoftwareApplication`/`WebApplication` (free, no fabricated
+  ratings) + `BreadcrumbList` + `FAQPage`, and `WebSite` + `Organization` on the home pages.
+  Note: Google removed FAQ rich results (May 2026) and HowTo rich results (Sept 2023) — the
+  FAQ markup is kept only as an AI/entity signal, and HowTo is deliberately not used.
+- Language detection no longer auto-redirects (against Google's multi-regional guidance);
+  a dismissible, non-redirecting banner suggests the visitor's locale instead.
 - Internal linking via the bento-grid homepage (each card → a tool page).
 - Mind Cloudflare's 20,000-file limit when multiplying tools × locales (`docs/01`).
 

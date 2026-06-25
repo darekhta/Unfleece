@@ -7,15 +7,21 @@ import FillFormTool from '../../../components/FillFormTool.svelte';
 import PageNumbersTool from '../../../components/editor/PageNumbersTool.svelte';
 import CropTool from '../../../components/editor/CropTool.svelte';
 import WatermarkTool from '../../../components/editor/WatermarkTool.svelte';
+import PromoNeoDeutsch from '../../../components/PromoNeoDeutsch.astro';
 import { TOOLS, CATEGORIES, type Tool } from '../../../lib/registry';
 import {
   CATEGORY_TEXT,
+  bundle,
+  LOCALES,
   RUNNER_TEXT,
   NON_DEFAULT_LOCALES,
   TOOL_PAGE_TEXT,
   localizeTool,
+  localizedPath,
   localizedToolPath,
   toolAlternates,
+  toolFaqs,
+  toolIntro,
   type NonDefaultLocale,
 } from '../../../lib/locales';
 
@@ -30,11 +36,51 @@ const tool = localizeTool(baseTool, locale);
 const cat = CATEGORIES[tool.category];
 const catText = CATEGORY_TEXT[locale][tool.category];
 const pageText = TOOL_PAGE_TEXT[locale];
+const promo = bundle(locale).promo;
 
 let related = TOOLS.filter((t) => t.category === baseTool.category && t.id !== baseTool.id);
 if (related.length < 4) related = related.concat(TOOLS.filter((t) => t.category !== baseTool.category && t.id !== baseTool.id));
 related = related.slice(0, 4).map((t) => localizeTool(t, locale));
-const faqs = pageText.faqs(tool.name);
+
+const intro = toolIntro(baseTool, locale);
+const faqs = toolFaqs(baseTool, locale) ?? pageText.faqs(tool.name);
+
+// Absolute URLs for structured data (locale-correct).
+const pageUrl = new URL(localizedToolPath(locale, baseTool.slug), Astro.site).toString();
+const homeUrl = new URL(localizedPath(locale, '/'), Astro.site).toString();
+const orgUrl = new URL('/', Astro.site).toString();
+const breadcrumb = [
+  { name: pageText.breadcrumbHome, item: homeUrl },
+  { name: pageText.breadcrumbTools, item: `${homeUrl}#tools-section` },
+  { name: catText.label, item: `${homeUrl}#cat-${tool.category}` },
+  { name: tool.name, item: pageUrl },
+];
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': ['SoftwareApplication', 'WebApplication'],
+      name: tool.name,
+      description: tool.description,
+      url: pageUrl,
+      applicationCategory: 'UtilitiesApplication',
+      operatingSystem: 'Any (web browser)',
+      browserRequirements: 'Requires JavaScript and WebAssembly',
+      inLanguage: LOCALES[locale].htmlLang,
+      isAccessibleForFree: true,
+      offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+      publisher: { '@type': 'Organization', name: 'Unfleece', url: orgUrl },
+    },
+    {
+      '@type': 'BreadcrumbList',
+      itemListElement: breadcrumb.map((b, i) => ({ '@type': 'ListItem', position: i + 1, name: b.name, item: b.item })),
+    },
+    {
+      '@type': 'FAQPage',
+      mainEntity: faqs.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })),
+    },
+  ],
+};
 ---
 
 <Base
@@ -86,6 +132,15 @@ const faqs = pageText.faqs(tool.name);
         </div>
       </div>
 
+      {/* Unique per-tool overview — renders once the locale supplies a translated intro. */}
+      {intro && (
+        <section class="tool-section prose-width">
+          <span class="eyebrow">Overview</span>
+          <h2 class="h2">About {tool.name}</h2>
+          <p class="body ink-soft">{intro}</p>
+        </section>
+      )}
+
       <section class="tool-section">
         <span class="eyebrow">{pageText.howEyebrow}</span>
         <h2 class="h2">{pageText.howHeading(tool.name)}</h2>
@@ -130,6 +185,8 @@ const faqs = pageText.faqs(tool.name);
         </div>
       </section>
 
+      {promo && <PromoNeoDeutsch promo={promo} contained={false} />}
+
       <section class="tool-section">
         <span class="eyebrow">{pageText.relatedEyebrow}</span>
         <h2 class="h2">{pageText.relatedHeading}</h2>
@@ -149,9 +206,5 @@ const faqs = pageText.faqs(tool.name);
     </div>
   </section>
 
-  <script is:inline type="application/ld+json" set:html={JSON.stringify({
-    '@context': 'https://schema.org',
-    '@type': 'FAQPage',
-    mainEntity: faqs.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })),
-  })} />
+  <script is:inline type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
 </Base>

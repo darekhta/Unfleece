@@ -121,10 +121,28 @@ export interface RunnerText {
   rejectedSingle: string;
 }
 
+/** Cross-promo ad block strings (optional; only locales that define `promo` show the ad). */
+export interface PromoText {
+  /** Honest ad disclosure, e.g. "Ad". */
+  disclosure: string;
+  /** Hook headline, e.g. "Learning German?". */
+  heading: string;
+  /** One supporting line. */
+  body: string;
+  /** Call-to-action button label. */
+  cta: string;
+  /** Alt text for the mascot image. */
+  imgAlt: string;
+}
+
 export interface ToolText {
   name: string;
   tagline: string;
   description: string;
+  /** Unique on-page paragraph for the tool (optional; English lives in the registry). */
+  intro?: string;
+  /** Tool-specific FAQ (optional; English lives in the registry). */
+  faqs?: { q: string; a: string }[];
 }
 
 /** id → translated tool text. Missing ids fall back to the English registry. */
@@ -138,6 +156,8 @@ export interface LocaleBundle {
   home: HomeText;
   /** Interactive runner island strings (optional; falls back to English). */
   runner?: RunnerText;
+  /** Cross-promo ad block (optional; only locales that define it render the ad). */
+  promo?: PromoText;
   /** Empty for English (the registry already holds the source strings). */
   tools: ToolTextMap;
 }

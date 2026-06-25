@@ -10,31 +10,28 @@
   "theme_color": "#EEF1F7",
   "categories": ["productivity", "utilities"],
   "icons": [
-    {
-      "src": "/logo.png",
-      "sizes": "500x500",
-      "type": "image/png",
-      "purpose": "any maskable"
-    }
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "shortcuts": [
     {
       "name": "Merge PDF",
       "short_name": "Merge",
       "url": "/tools/merge-pdf",
-      "icons": [{ "src": "/logo.png", "sizes": "500x500", "type": "image/png" }]
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" }]
     },
     {
       "name": "Compress PDF",
       "short_name": "Compress",
       "url": "/tools/compress-pdf",
-      "icons": [{ "src": "/logo.png", "sizes": "500x500", "type": "image/png" }]
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" }]
     },
     {
       "name": "Sign PDF",
       "short_name": "Sign",
       "url": "/tools/sign-pdf",
-      "icons": [{ "src": "/logo.png", "sizes": "500x500", "type": "image/png" }]
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" }]
     }
   ]
 }

@@ -10,6 +10,7 @@ import type {
   LayoutText,
   LocaleBundle,
   LocaleMeta,
+  PromoText,
   RunnerText,
   ToolPageText,
   ToolText,
@@ -27,16 +28,17 @@ import { de } from './i18n/de.js';
 import { ja } from './i18n/ja.js';
 import { it } from './i18n/it.js';
 import { uk } from './i18n/uk.js';
+import { pl } from './i18n/pl.js';
 
-export type { LayoutText, ToolPageText, HomeText, CategoryText, LocaleMeta, ToolText, RunnerText, Dir };
+export type { LayoutText, ToolPageText, HomeText, CategoryText, LocaleMeta, ToolText, RunnerText, PromoText, Dir };
 
-export type Locale = 'en' | 'zh' | 'hi' | 'es' | 'fr' | 'ar' | 'pt' | 'ru' | 'de' | 'ja' | 'it' | 'uk';
+export type Locale = 'en' | 'zh' | 'hi' | 'es' | 'fr' | 'ar' | 'pt' | 'ru' | 'de' | 'ja' | 'it' | 'pl' | 'uk';
 export type NonDefaultLocale = Exclude<Locale, 'en'>;
 
 export const DEFAULT_LOCALE: Locale = 'en';
 
 /** Source of truth: ordered roughly by global reach, English first. */
-const BUNDLES: Record<Locale, LocaleBundle> = { en, zh, hi, es, fr, ar, pt, ru, de, ja, it, uk };
+const BUNDLES: Record<Locale, LocaleBundle> = { en, zh, hi, es, fr, ar, pt, ru, de, ja, it, pl, uk };
 
 export const ALL_LOCALES: Locale[] = Object.keys(BUNDLES) as Locale[];
 export const NON_DEFAULT_LOCALES: NonDefaultLocale[] = ALL_LOCALES.filter((l) => l !== 'en') as NonDefaultLocale[];
@@ -83,6 +85,25 @@ export function localizeTool(tool: Tool, locale: Locale): Tool {
   if (locale === DEFAULT_LOCALE) return tool;
   const text = BUNDLES[locale].tools[tool.id];
   return text ? { ...tool, ...text } : tool;
+}
+
+/**
+ * Unique on-page intro for a tool. Uses the locale's translation when present,
+ * otherwise the English registry source only on the default locale — non-default
+ * locales render nothing (no English copy bleeding onto a translated page) until
+ * a translation is supplied in their bundle.
+ */
+export function toolIntro(tool: Tool, locale: Locale): string | undefined {
+  const localized = BUNDLES[locale].tools[tool.id]?.intro;
+  if (localized) return localized;
+  return locale === DEFAULT_LOCALE ? tool.intro : undefined;
+}
+
+/** Tool-specific FAQ for a locale, or undefined to fall back to the generic template. */
+export function toolFaqs(tool: Tool, locale: Locale): { q: string; a: string }[] | undefined {
+  const localized = BUNDLES[locale].tools[tool.id]?.faqs;
+  if (localized && localized.length) return localized;
+  return locale === DEFAULT_LOCALE ? tool.faqs : undefined;
 }
 
 // ---------------------------------------------------------------------------
