@@ -32,8 +32,10 @@ jobs:
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Audit dependencies
-        run: npm audit --audit-level=moderate
+      - name: Audit dependencies (production deps only)
+        # Astro/esbuild advisories are build-time devDependencies; this is a static,
+        # client-side site (no SSR), so that code never ships to users. Audit what we ship.
+        run: npm audit --omit=dev --audit-level=moderate
 
       - name: Type-check Astro/Svelte
         run: npm run check

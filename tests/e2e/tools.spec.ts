@@ -164,12 +164,22 @@ test('switching language persists the choice and is not auto-overridden', async 
   await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
 });
 
-test('auto-detect routes a Spanish browser to the Spanish homepage once', async ({ browser }) => {
+test('auto-detect suggests (does not redirect to) the Spanish homepage for a Spanish browser', async ({ browser }) => {
   const context = await browser.newContext({ locale: 'es-ES' });
   const page = await context.newPage();
   await page.goto('/');
-  await page.waitForURL('**/es', { timeout: 10000 });
+  // By design we never auto-redirect (Google advises against guessing the user's
+  // language); we surface a dismissible suggestion banner linking to the localized home.
+  const suggestion = page.getByRole('region', { name: 'Language suggestion' });
+  const link = suggestion.getByRole('link', { name: 'Ver Unfleece en español' });
+  await expect(link).toBeVisible();
+  await expect(link).toHaveAttribute('href', /\/es\/?$/);
+  expect(new URL(page.url()).pathname).toBe('/'); // still on English home, not redirected
+  // Following the suggestion navigates there and remembers the choice.
+  await link.click();
+  await page.waitForURL('**/es');
   await expect(page.locator('html')).toHaveAttribute('lang', 'es');
+  expect(await page.evaluate(() => localStorage.getItem('uf-lang'))).toBe('es');
   await context.close();
 });
 
