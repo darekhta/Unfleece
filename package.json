@@ -31,7 +31,7 @@
     "@okathira/ghostpdl-wasm": "^1.1.0",
     "comlink": "^4.4.2",
     "jszip": "^3.10.1",
-    "pdfjs-dist": "^6.0.227",
+    "pdfjs-dist": "^6.1.200",
     "tesseract-wasm": "^0.11.0"
   },
   "devDependencies": {
