@@ -43,7 +43,7 @@
     "astro": "^6.4.4",
     "svelte": "^5.20.0",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.8"
+    "vitest": "^4.1.10"
   },
   "overrides": {
     "volar-service-yaml": "0.0.71"
