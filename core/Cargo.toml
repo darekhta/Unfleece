@@ -23,7 +23,7 @@ aes = "0.8"
 cbc = { version = "0.1", features = ["alloc"] }
 sha2 = "0.10"
 md-5 = "0.10"
-rc4 = "0.1"
+rc4 = "0.2"
 getrandom = { version = "0.2", features = ["js"] }
 
 # wasm-bindgen is only needed when compiling to wasm; native `cargo test` skips it.
