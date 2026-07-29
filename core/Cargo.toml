@@ -20,7 +20,7 @@ serde_json = "1"
 # wave 2: ZIP containers (office/EPUB) + Standard Security encryption
 zip = { version = "2", default-features = false, features = ["deflate"] }
 aes = "0.8"
-cbc = { version = "0.1", features = ["alloc"] }
+cbc = { version = "0.2", features = ["alloc"] }
 sha2 = "0.10"
 md-5 = "0.10"
 rc4 = "0.1"
